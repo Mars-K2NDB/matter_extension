@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/mars/matter_extension/lighting_mot/matter_thread_soc_lighting_app_series_2_internal_freertos_cmake/build/CMakeFiles/matter_thread_soc_lighting_app_freertos-base"
+		},
+		{
+			"file" : "/home/mars/matter_extension/lighting_mot/matter_thread_soc_lighting_app_series_2_internal_freertos_cmake/build/CMakeFiles/matter_thread_soc_lighting_app_freertos-(CONFIG).rule"
+		},
+		{
+			"file" : "/home/mars/matter_extension/lighting_mot/matter_thread_soc_lighting_app_series_2_internal_freertos_cmake/build/CMakeFiles/(CONFIG)/matter_thread_soc_lighting_app_freertos-complete.rule"
+		},
+		{
+			"file" : "/home/mars/matter_extension/lighting_mot/matter_thread_soc_lighting_app_series_2_internal_freertos_cmake/build/matter_thread_soc_lighting_app_freertos-prefix/src/matter_thread_soc_lighting_app_freertos-stamp/(CONFIG)/matter_thread_soc_lighting_app_freertos-build.rule"
+		},
+		{
+			"file" : "/home/mars/matter_extension/lighting_mot/matter_thread_soc_lighting_app_series_2_internal_freertos_cmake/build/matter_thread_soc_lighting_app_freertos-prefix/src/matter_thread_soc_lighting_app_freertos-stamp/(CONFIG)/matter_thread_soc_lighting_app_freertos-configure.rule"
+		},
+		{
+			"file" : "/home/mars/matter_extension/lighting_mot/matter_thread_soc_lighting_app_series_2_internal_freertos_cmake/build/matter_thread_soc_lighting_app_freertos-prefix/src/matter_thread_soc_lighting_app_freertos-stamp/(CONFIG)/matter_thread_soc_lighting_app_freertos-download.rule"
+		},
+		{
+			"file" : "/home/mars/matter_extension/lighting_mot/matter_thread_soc_lighting_app_series_2_internal_freertos_cmake/build/matter_thread_soc_lighting_app_freertos-prefix/src/matter_thread_soc_lighting_app_freertos-stamp/(CONFIG)/matter_thread_soc_lighting_app_freertos-install.rule"
+		},
+		{
+			"file" : "/home/mars/matter_extension/lighting_mot/matter_thread_soc_lighting_app_series_2_internal_freertos_cmake/build/matter_thread_soc_lighting_app_freertos-prefix/src/matter_thread_soc_lighting_app_freertos-stamp/(CONFIG)/matter_thread_soc_lighting_app_freertos-mkdir.rule"
+		},
+		{
+			"file" : "/home/mars/matter_extension/lighting_mot/matter_thread_soc_lighting_app_series_2_internal_freertos_cmake/build/matter_thread_soc_lighting_app_freertos-prefix/src/matter_thread_soc_lighting_app_freertos-stamp/(CONFIG)/matter_thread_soc_lighting_app_freertos-patch.rule"
+		},
+		{
+			"file" : "/home/mars/matter_extension/lighting_mot/matter_thread_soc_lighting_app_series_2_internal_freertos_cmake/build/matter_thread_soc_lighting_app_freertos-prefix/src/matter_thread_soc_lighting_app_freertos-stamp/(CONFIG)/matter_thread_soc_lighting_app_freertos-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"matter_thread_soc_lighting_app_freertos"
+		],
+		"name" : "matter_thread_soc_lighting_app_freertos"
+	}
+}

@@ -1,0 +1,38 @@
+{
+  "matter_sdk_paths": {
+    "source": [
+      "third_party/matter_sdk/examples/platform/silabs/customer/CustomerAppTask.cpp",
+      "third_party/matter_sdk/examples/platform/silabs/main.cpp"
+    ],
+    "include": [
+      "third_party/matter_sdk/examples/lighting-app/silabs/include/AppConfig.h",
+      "third_party/matter_sdk/examples/lighting-app/silabs/include/AppEvent.h",
+      "third_party/matter_sdk/examples/lighting-app/silabs/include/CHIPProjectConfig.h",
+      "third_party/matter_sdk/examples/platform/silabs/customer/CustomerAppTask.h"
+    ]
+  },
+  "customer_paths": {
+    "source": [
+      "lighting_mot/lighting_app/src/CustomerAppTask.cpp",
+      "lighting_mot/lighting_app/src/main.cpp"
+    ],
+    "include": [
+      "lighting_mot/lighting_app/include/AppConfig.h",
+      "lighting_mot/lighting_app/include/AppEvent.h",
+      "lighting_mot/lighting_app/include/CHIPProjectConfig.h",
+      "lighting_mot/lighting_app/include/CustomerAppTask.h"
+    ]
+  },
+  "backups_paths": {
+    "source": [
+      "lighting_mot/lighting_app/.bak/original/src/main.cpp",
+      "lighting_mot/lighting_app/.bak/original/src/CustomerAppTask.cpp"
+    ],
+    "include": [
+      "lighting_mot/lighting_app/.bak/original/include/AppEvent.h",
+      "lighting_mot/lighting_app/.bak/original/include/AppConfig.h",
+      "lighting_mot/lighting_app/.bak/original/include/CustomerAppTask.h",
+      "lighting_mot/lighting_app/.bak/original/include/CHIPProjectConfig.h"
+    ]
+  }
+}
