@@ -34,10 +34,23 @@ public:
     /** Same as RefreshFromMatterEndpoint but acquires/releases chip stack lock (AppTask init). */
     static void SyncFromMatterEndpoint(chip::EndpointId endpoint);
 
-    /** Overcurrent trip: PWM duty 0, block SetOn(true) until fault clears. */
+    /** Overcurrent/short trip (task context): PWM off via fast register path. */
     static void ForceOffForFault();
 
+    /** ISR-safe: TIMER compare 0 + route disable + GPIO forced off (fastest). */
+    static void ForceOffForFaultFromIsr();
+
+    /**
+     * After fault clears: re-enable TIMER routes and restore pre-fault on/level/CT to PWM.
+     */
+    static void RecoverFromFault();
+
+    /** Pre-fault snapshot saved on first trip; false if none. */
+    static bool GetPreFaultState(bool & on, uint8_t & level, uint16_t & ctMireds);
+
 private:
+    static void SaveStateBeforeFault();
+    static void PwmOutputRestoreRegisters();
     static void ApplyOutput();
     static uint8_t LevelToBrightnessPercent(uint8_t level);
     /** Map Matter level to PWM brightness; handles on-at-min-level (CurrentLevel==1). */
@@ -49,4 +62,9 @@ private:
     static uint8_t sLevel;
     static uint16_t sCtMireds;
     static bool sPwmStarted;
+    static bool sRouteDisabled;
+    static bool sPreFaultSaved;
+    static bool sPreFaultOn;
+    static uint8_t sPreFaultLevel;
+    static uint16_t sPreFaultCtMireds;
 };

@@ -7,13 +7,20 @@
 #include "AppConfig.h"
 #include "CtDualPwmDriver.h"
 #include "overcurrent_protect_config.h"
+#include "ShortCircuitProtector.h"
 #include "VoltageAdcDriver.h"
 
+#include <app-common/zap-generated/attributes/Accessors.h>
 #include <app/clusters/on-off-server/on-off-server.h>
 #include <app/reporting/reporting.h>
+#include <clusters/ColorControl/AttributeIds.h>
+#include <clusters/LevelControl/AttributeIds.h>
 #include <clusters/OnOff/AttributeIds.h>
+#include <protocols/interaction_model/StatusCode.h>
 #include <lib/support/logging/CHIPLogging.h>
 #include <platform/CHIPDeviceLayer.h>
+
+#include <algorithm>
 
 #include <em_gpio.h>
 #include <sl_gpio.h>
@@ -23,7 +30,8 @@ using namespace chip::app;
 using namespace chip::app::Clusters;
 using namespace chip::DeviceLayer;
 
-bool OvercurrentProtector::sFaultActive    = false;
+bool OvercurrentProtector::sFaultActive       = false;
+bool OvercurrentProtector::sMatterOffPending  = false;
 uint32_t OvercurrentProtector::sAvgMillivolts = 0;
 uint32_t OvercurrentProtector::sRecoveryMs   = 0;
 uint32_t OvercurrentProtector::sSampleRing[OVERCURRENT_AVG_SAMPLES] = {};
@@ -60,15 +68,43 @@ void SetMatterOnOff(bool on)
     PlatformMgr().UnlockChipStack();
 }
 
+void RestoreMatterLightState(bool on, uint8_t level, uint16_t ctMireds)
+{
+    using namespace chip::Protocols::InteractionModel;
+
+    const uint16_t ct = std::clamp(ctMireds, CtDualPwmDriver::kCtMinMireds, CtDualPwmDriver::kCtMaxMireds);
+
+    PlatformMgr().LockChipStack();
+
+    OnOffServer::Instance().setOnOffValue(LIGHT_ENDPOINT, on ? 1U : 0U, false);
+    MatterReportingAttributeChangeCallback(
+        ConcreteAttributePath(LIGHT_ENDPOINT, OnOff::Id, OnOff::Attributes::OnOff::Id));
+
+    if (LevelControl::Attributes::CurrentLevel::Set(LIGHT_ENDPOINT, level) == Status::Success)
+    {
+        MatterReportingAttributeChangeCallback(
+            ConcreteAttributePath(LIGHT_ENDPOINT, LevelControl::Id, LevelControl::Attributes::CurrentLevel::Id));
+    }
+
+    if (ColorControl::Attributes::ColorTemperatureMireds::Set(LIGHT_ENDPOINT, ct) == Status::Success)
+    {
+        MatterReportingAttributeChangeCallback(ConcreteAttributePath(LIGHT_ENDPOINT, ColorControl::Id,
+                                                                     ColorControl::Attributes::ColorTemperatureMireds::Id));
+    }
+
+    PlatformMgr().UnlockChipStack();
+}
+
 } // namespace
 
 void OvercurrentProtector::Init()
 {
-    sFaultActive    = false;
-    sAvgMillivolts  = 0;
-    sRecoveryMs     = 0;
-    sSampleCount    = 0;
-    sSampleIndex    = 0;
+    sFaultActive       = false;
+    sMatterOffPending  = false;
+    sAvgMillivolts     = 0;
+    sRecoveryMs        = 0;
+    sSampleCount       = 0;
+    sSampleIndex       = 0;
 }
 
 void OvercurrentProtector::UpdateAverage(uint32_t millivolts)
@@ -94,12 +130,43 @@ void OvercurrentProtector::UpdateAverage(uint32_t millivolts)
 
 bool OvercurrentProtector::IsGpioOk()
 {
+    if (!ShortCircuitProtector::IsPinOk())
+    {
+        return false;
+    }
+
 #if defined(OVERCURRENT_GPIO_OK_PORT) && defined(OVERCURRENT_GPIO_OK_PIN)
     const unsigned int level = GPIO_PinInGet(GpioOkPort(), OVERCURRENT_GPIO_OK_PIN);
     return level == OVERCURRENT_GPIO_OK_LEVEL;
 #else
     return VoltageAdcDriver::IsInitialized();
 #endif
+}
+
+void OvercurrentProtector::TripFromIsr()
+{
+    if (sFaultActive)
+    {
+        return;
+    }
+
+    sFaultActive      = true;
+    sRecoveryMs       = 0;
+    sMatterOffPending = true;
+
+    CtDualPwmDriver::ForceOffForFaultFromIsr();
+}
+
+void OvercurrentProtector::ProcessDeferredTrip()
+{
+    if (!sMatterOffPending)
+    {
+        return;
+    }
+
+    sMatterOffPending = false;
+    SetMatterOnOff(false);
+    ChipLogError(AppServer, "Short-circuit TRIP (PB00 falling edge)");
 }
 
 void OvercurrentProtector::Trip()
@@ -127,19 +194,31 @@ void OvercurrentProtector::Recover()
         return;
     }
 
-    sFaultActive = false;
-    sRecoveryMs  = 0;
+    sFaultActive      = false;
+    sRecoveryMs       = 0;
+    sMatterOffPending = false;
 
-    CtDualPwmDriver::Init();
-    SetMatterOnOff(true);
+    ShortCircuitProtector::OnRecover();
+
+    bool restoreOn = false;
+    uint8_t restoreLevel = 0;
+    uint16_t restoreCt   = CtDualPwmDriver::kDefaultCtMireds;
+    if (CtDualPwmDriver::GetPreFaultState(restoreOn, restoreLevel, restoreCt))
+    {
+        RestoreMatterLightState(restoreOn, restoreLevel, restoreCt);
+    }
+
+    CtDualPwmDriver::RecoverFromFault();
     CtDualPwmDriver::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
 
-    ChipLogProgress(AppServer, "Overcurrent RECOVER: avg=%lu mV <= %u mV for %u ms", static_cast<unsigned long>(sAvgMillivolts),
-                    OVERCURRENT_CLEAR_MV, OVERCURRENT_RECOVERY_MS);
+    ChipLogProgress(AppServer, "Protection RECOVER: on=%u level=%u ct=%u (avg=%lu mV)", restoreOn, restoreLevel, restoreCt,
+                    static_cast<unsigned long>(sAvgMillivolts));
 }
 
 void OvercurrentProtector::OnAdcSample(uint32_t millivolts, bool sampleValid)
 {
+    ProcessDeferredTrip();
+
     if (!sampleValid)
     {
         sRecoveryMs = 0;

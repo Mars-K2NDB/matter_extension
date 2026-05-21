@@ -7,7 +7,14 @@
 #include "CtPwmVersion.h"
 #include "OvercurrentProtector.h"
 
+#include "sl_pwm_init_pwm0_config.h"
+#include "sl_pwm_init_pwm1_config.h"
 #include "sl_pwm_instances.h"
+
+#include <em_gpio.h>
+#include <em_timer.h>
+
+#include "sl_gpio.h"
 
 #include <app-common/zap-generated/attributes/Accessors.h>
 #include <app/clusters/on-off-server/on-off-server.h>
@@ -23,7 +30,129 @@
 bool CtDualPwmDriver::sOn         = false;
 uint8_t CtDualPwmDriver::sLevel     = 254;
 uint16_t CtDualPwmDriver::sCtMireds = kDefaultCtMireds;
-bool CtDualPwmDriver::sPwmStarted   = false;
+bool CtDualPwmDriver::sPwmStarted        = false;
+bool CtDualPwmDriver::sRouteDisabled     = false;
+bool CtDualPwmDriver::sPreFaultSaved     = false;
+bool CtDualPwmDriver::sPreFaultOn        = false;
+uint8_t CtDualPwmDriver::sPreFaultLevel    = 254;
+uint16_t CtDualPwmDriver::sPreFaultCtMireds = kDefaultCtMireds;
+
+namespace {
+
+void PwmRouteDisable(const sl_pwm_instance_t & pwm)
+{
+#if defined(_GPIO_TIMER_ROUTEEN_MASK)
+    GPIO->TIMERROUTE_CLR[TIMER_NUM(pwm.timer)].ROUTEEN = 1U << (pwm.channel + _GPIO_TIMER_ROUTEEN_CC0PEN_SHIFT);
+#else
+    switch (TIMER_NUM(pwm.timer))
+    {
+    case 0:
+        GPIO->TIMER0ROUTE_CLR[0].ROUTEEN = 1U << (pwm.channel + _GPIO_TIMER0_ROUTEEN_CC0PEN_SHIFT);
+        break;
+    case 1:
+        GPIO->TIMER1ROUTE_CLR[0].ROUTEEN = 1U << (pwm.channel + _GPIO_TIMER1_ROUTEEN_CC0PEN_SHIFT);
+        break;
+    default:
+        break;
+    }
+#endif
+}
+
+void PwmCompareZero(const sl_pwm_instance_t & pwm)
+{
+#if defined(_SILICON_LABS_32B_SERIES_2)
+    TIMER_CompareSet(pwm.timer, pwm.channel, 0U);
+    TIMER_CompareBufSet(pwm.timer, pwm.channel, 0U);
+#else
+    sl_pwm_set_duty_cycle(const_cast<sl_pwm_instance_t *>(&pwm), 0);
+#endif
+}
+
+void PwmSetDutyImmediate(const sl_pwm_instance_t & pwm, uint8_t percent)
+{
+#if defined(_SILICON_LABS_32B_SERIES_2)
+    const uint32_t top  = TIMER_TopGet(pwm.timer);
+    const uint32_t cmp  = (top * static_cast<uint32_t>(percent)) / 100U;
+    TIMER_CompareSet(pwm.timer, pwm.channel, cmp);
+    TIMER_CompareBufSet(pwm.timer, pwm.channel, cmp);
+#else
+    sl_pwm_set_duty_cycle(const_cast<sl_pwm_instance_t *>(&pwm), percent);
+#endif
+}
+
+void RestorePwmPinMode(const sl_pwm_instance_t & pwm, bool activeHigh)
+{
+    sl_gpio_t gpio = {
+        .port = pwm.port,
+        .pin  = pwm.pin,
+    };
+    (void) sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_PUSH_PULL, activeHigh);
+}
+
+/** Register-level PWM kill: compare 0 + disconnect TIMER route (no GPIO hold). */
+void PwmOutputKillRegisters()
+{
+    PwmCompareZero(sl_pwm_pwm0);
+    PwmCompareZero(sl_pwm_pwm1);
+    PwmRouteDisable(sl_pwm_pwm0);
+    PwmRouteDisable(sl_pwm_pwm1);
+}
+
+} // namespace
+
+void CtDualPwmDriver::PwmOutputRestoreRegisters()
+{
+    RestorePwmPinMode(sl_pwm_pwm0, SL_PWM_PWM0_POLARITY == PWM_ACTIVE_HIGH);
+    RestorePwmPinMode(sl_pwm_pwm1, SL_PWM_PWM1_POLARITY == PWM_ACTIVE_HIGH);
+
+    sl_pwm_start(&sl_pwm_pwm0);
+    sl_pwm_start(&sl_pwm_pwm1);
+    sPwmStarted    = true;
+    sRouteDisabled = false;
+}
+
+void CtDualPwmDriver::SaveStateBeforeFault()
+{
+    if (sPreFaultSaved)
+    {
+        return;
+    }
+
+    sPreFaultOn        = sOn;
+    sPreFaultLevel     = sLevel;
+    sPreFaultCtMireds  = sCtMireds;
+    sPreFaultSaved     = true;
+}
+
+bool CtDualPwmDriver::GetPreFaultState(bool & on, uint8_t & level, uint16_t & ctMireds)
+{
+    if (!sPreFaultSaved)
+    {
+        return false;
+    }
+
+    on      = sPreFaultOn;
+    level   = sPreFaultLevel;
+    ctMireds = sPreFaultCtMireds;
+    return true;
+}
+
+void CtDualPwmDriver::RecoverFromFault()
+{
+    PwmOutputRestoreRegisters();
+
+    if (sPreFaultSaved)
+    {
+        sOn       = sPreFaultOn;
+        sLevel    = sPreFaultLevel;
+        sCtMireds = sPreFaultCtMireds;
+        sPreFaultSaved = false;
+    }
+
+    ApplyOutput();
+
+    ChipLogProgress(AppServer, "CtPwm RECOVER: on=%u level=%u ct=%u", sOn, sLevel, sCtMireds);
+}
 
 void CtDualPwmDriver::LogVersion()
 {
@@ -45,10 +174,20 @@ void CtDualPwmDriver::Init()
     ApplyOutput();
 }
 
+void CtDualPwmDriver::ForceOffForFaultFromIsr()
+{
+    SaveStateBeforeFault();
+    sOn = false;
+    PwmOutputKillRegisters();
+    sRouteDisabled = true;
+}
+
 void CtDualPwmDriver::ForceOffForFault()
 {
+    SaveStateBeforeFault();
     sOn = false;
-    ApplyOutput();
+    PwmOutputKillRegisters();
+    sRouteDisabled = true;
 }
 
 void CtDualPwmDriver::SetOn(bool on)
@@ -199,28 +338,20 @@ void CtDualPwmDriver::ApplyOutput()
 {
     if (OvercurrentProtector::IsFaultActive())
     {
-        if (!sPwmStarted)
-        {
-            sl_pwm_start(&sl_pwm_pwm0);
-            sl_pwm_start(&sl_pwm_pwm1);
-            sPwmStarted = true;
-        }
-        sl_pwm_set_duty_cycle(&sl_pwm_pwm0, 0);
-        sl_pwm_set_duty_cycle(&sl_pwm_pwm1, 0);
+        PwmOutputKillRegisters();
+        sRouteDisabled = true;
         return;
     }
 
-    if (!sPwmStarted)
+    if (sRouteDisabled || !sPwmStarted)
     {
-        sl_pwm_start(&sl_pwm_pwm0);
-        sl_pwm_start(&sl_pwm_pwm1);
-        sPwmStarted = true;
+        PwmOutputRestoreRegisters();
     }
 
     if (!sOn)
     {
-        sl_pwm_set_duty_cycle(&sl_pwm_pwm0, 0);
-        sl_pwm_set_duty_cycle(&sl_pwm_pwm1, 0);
+        PwmSetDutyImmediate(sl_pwm_pwm0, 0);
+        PwmSetDutyImmediate(sl_pwm_pwm1, 0);
         return;
     }
 
@@ -239,8 +370,8 @@ void CtDualPwmDriver::ApplyOutput()
         warmDuty = static_cast<uint8_t>((static_cast<uint32_t>(brightness) * warmWeight) / weightSum);
     }
 
-    sl_pwm_set_duty_cycle(&sl_pwm_pwm0, coolDuty);
-    sl_pwm_set_duty_cycle(&sl_pwm_pwm1, warmDuty);
+    PwmSetDutyImmediate(sl_pwm_pwm0, coolDuty);
+    PwmSetDutyImmediate(sl_pwm_pwm1, warmDuty);
 
     ChipLogDetail(Zcl, "CtPwm duty: cool=%u warm=%u (ct=%u brightness=%u)", coolDuty, warmDuty, ct, brightness);
 }

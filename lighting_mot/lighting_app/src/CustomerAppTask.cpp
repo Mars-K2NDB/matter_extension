@@ -29,6 +29,7 @@
 #include "AppConfig.h"
 #include "CtDualPwmDriver.h"
 #include "OvercurrentProtector.h"
+#include "ShortCircuitProtector.h"
 #include "VoltageAdcDriver.h"
 
 #include <app/clusters/on-off-server/on-off-server.h>
@@ -110,6 +111,7 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     CtDualPwmDriver::Init();
     VoltageAdcDriver::Init();
     OvercurrentProtector::Init();
+    ShortCircuitProtector::Init();
     VoltageAdcDriver::StartPeriodicSampling();
 
     // Ensure Color Control cluster advertises CT and has a valid starting mired value.

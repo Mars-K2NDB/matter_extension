@@ -14,6 +14,9 @@ public:
     static void Init();
     static void OnAdcSample(uint32_t millivolts, bool sampleValid);
 
+    /** PB00 short-circuit ISR: PWM off immediately; Matter off deferred to task context. */
+    static void TripFromIsr();
+
     static bool IsFaultActive() { return sFaultActive; }
     static bool BlocksTurnOn() { return sFaultActive; }
     static uint32_t AverageMillivolts() { return sAvgMillivolts; }
@@ -23,8 +26,10 @@ private:
     static bool IsGpioOk();
     static void Trip();
     static void Recover();
+    static void ProcessDeferredTrip();
 
     static bool sFaultActive;
+    static bool sMatterOffPending;
     static uint32_t sAvgMillivolts;
     static uint32_t sRecoveryMs;
     static uint32_t sSampleRing[OVERCURRENT_AVG_SAMPLES];

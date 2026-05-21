@@ -23,6 +23,7 @@ source:
 - path: src/CtDualPwmDriver.cpp
 - path: src/VoltageAdcDriver.cpp
 - path: src/OvercurrentProtector.cpp
+- path: src/ShortCircuitProtector.cpp
 - path: src/main.cpp
 include:
 - path: include
@@ -39,6 +40,8 @@ include:
   - path: voltage_adc_config.h
   - path: OvercurrentProtector.h
   - path: overcurrent_protect_config.h
+  - path: ShortCircuitProtector.h
+  - path: short_circuit_protect_config.h
 sdk:
   vendor: silabs
   id: simplicity_sdk
