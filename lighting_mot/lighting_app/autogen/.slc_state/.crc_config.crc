@@ -10,6 +10,7 @@ btl_interface_cfg_s2c4.h=-887046297
 circular_queue_config.h=-132234366
 common/lighting-thread-app.zap=-574464130
 dmadrv_config.h=1721329697
+keyscan_driver_config.h=1035914845
 matter/tracing/build_config.h=-104939885
 nvm3_default_config.h=2103899018
 platform/silabs/tracing/SilabsTracingConfig.h=-2111863941

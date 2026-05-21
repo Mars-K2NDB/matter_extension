@@ -34,6 +34,9 @@ public:
     /** Same as RefreshFromMatterEndpoint but acquires/releases chip stack lock (AppTask init). */
     static void SyncFromMatterEndpoint(chip::EndpointId endpoint);
 
+    /** Overcurrent trip: PWM duty 0, block SetOn(true) until fault clears. */
+    static void ForceOffForFault();
+
 private:
     static void ApplyOutput();
     static uint8_t LevelToBrightnessPercent(uint8_t level);

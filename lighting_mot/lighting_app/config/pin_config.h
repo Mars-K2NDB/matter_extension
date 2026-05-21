@@ -117,6 +117,14 @@
 // [LETIMER0]$
 
 // $[IADC0]
+// IADC0 SCAN0POS on PA00
+#ifndef IADC0_SCAN0POS_PORT                     
+#define IADC0_SCAN0POS_PORT                      SL_GPIO_PORT_A
+#endif
+#ifndef IADC0_SCAN0POS_PIN                      
+#define IADC0_SCAN0POS_PIN                       0
+#endif
+
 // [IADC0]$
 
 // $[ACMP0]

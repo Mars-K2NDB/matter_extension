@@ -5,6 +5,7 @@
 
 #include "CtDualPwmDriver.h"
 #include "CtPwmVersion.h"
+#include "OvercurrentProtector.h"
 
 #include "sl_pwm_instances.h"
 
@@ -44,8 +45,20 @@ void CtDualPwmDriver::Init()
     ApplyOutput();
 }
 
+void CtDualPwmDriver::ForceOffForFault()
+{
+    sOn = false;
+    ApplyOutput();
+}
+
 void CtDualPwmDriver::SetOn(bool on)
 {
+    if (on && OvercurrentProtector::BlocksTurnOn())
+    {
+        ChipLogProgress(AppServer, "CtPwm: on rejected (overcurrent fault)");
+        return;
+    }
+
     sOn = on;
     if (on && sLevel <= 1)
     {
@@ -128,6 +141,13 @@ uint8_t CtDualPwmDriver::ResolveLevelForPwm(chip::EndpointId endpoint, bool on, 
 
 void CtDualPwmDriver::RefreshFromMatterEndpoint(chip::EndpointId endpoint)
 {
+    if (OvercurrentProtector::IsFaultActive())
+    {
+        sOn = false;
+        ApplyOutput();
+        return;
+    }
+
     using namespace chip;
     using namespace chip::app;
     using namespace chip::app::Clusters;
@@ -177,6 +197,19 @@ uint8_t CtDualPwmDriver::LevelToBrightnessPercent(uint8_t level)
 
 void CtDualPwmDriver::ApplyOutput()
 {
+    if (OvercurrentProtector::IsFaultActive())
+    {
+        if (!sPwmStarted)
+        {
+            sl_pwm_start(&sl_pwm_pwm0);
+            sl_pwm_start(&sl_pwm_pwm1);
+            sPwmStarted = true;
+        }
+        sl_pwm_set_duty_cycle(&sl_pwm_pwm0, 0);
+        sl_pwm_set_duty_cycle(&sl_pwm_pwm1, 0);
+        return;
+    }
+
     if (!sPwmStarted)
     {
         sl_pwm_start(&sl_pwm_pwm0);

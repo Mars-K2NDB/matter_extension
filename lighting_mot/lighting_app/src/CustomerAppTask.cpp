@@ -28,6 +28,8 @@
 
 #include "AppConfig.h"
 #include "CtDualPwmDriver.h"
+#include "OvercurrentProtector.h"
+#include "VoltageAdcDriver.h"
 
 #include <app/clusters/on-off-server/on-off-server.h>
 #include <app/reporting/reporting.h>
@@ -66,6 +68,11 @@ void CtPwmEventHandler(AppEvent * aEvent)
     switch (ev.Kind)
     {
     case AppEvent::kCtPwmOn:
+        if (ev.On && OvercurrentProtector::BlocksTurnOn())
+        {
+            ChipLogProgress(AppServer, "CtPwm: on event ignored (overcurrent fault)");
+            break;
+        }
         CtDualPwmDriver::SetOn(ev.On);
         break;
 
@@ -101,6 +108,9 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     ReturnErrorOnFailure(AppTask::InitLight());
 
     CtDualPwmDriver::Init();
+    VoltageAdcDriver::Init();
+    OvercurrentProtector::Init();
+    VoltageAdcDriver::StartPeriodicSampling();
 
     // Ensure Color Control cluster advertises CT and has a valid starting mired value.
     PlatformMgr().LockChipStack();
@@ -138,11 +148,14 @@ void CustomerAppTask::LightActionEventHandlerImpl(AppEvent * aEvent)
 
     AppTask::LightActionEventHandler(aEvent);
 
-    AppEvent event{};
-    event.Type            = AppEvent::kEventType_CtPwm;
-    event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-    event.CtPwmEvent.On   = !wasOn;
-    PostCtPwmEvent(event);
+    if (!OvercurrentProtector::IsFaultActive())
+    {
+        AppEvent event{};
+        event.Type            = AppEvent::kEventType_CtPwm;
+        event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
+        event.CtPwmEvent.On   = !wasOn;
+        PostCtPwmEvent(event);
+    }
 }
 
 void CustomerAppTask::LightTimerEventHandlerImpl(void * timerCbArg)
@@ -167,6 +180,17 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
     case OnOff::Id:
         if (attributeId == OnOff::Attributes::OnOff::Id && value != nullptr && size == sizeof(uint8_t))
         {
+            if (OvercurrentProtector::IsFaultActive() && *value != 0)
+            {
+                PlatformMgr().LockChipStack();
+                OnOffServer::Instance().setOnOffValue(LIGHT_ENDPOINT, 0, false);
+                MatterReportingAttributeChangeCallback(
+                    ConcreteAttributePath(LIGHT_ENDPOINT, OnOff::Id, OnOff::Attributes::OnOff::Id));
+                PlatformMgr().UnlockChipStack();
+                ChipLogProgress(AppServer, "OnOff on rejected (overcurrent fault)");
+                return;
+            }
+
             AppEvent event{};
             event.Type            = AppEvent::kEventType_CtPwm;
             event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
