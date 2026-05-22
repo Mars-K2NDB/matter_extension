@@ -8,6 +8,12 @@
 #include <cstdint>
 #include <lib/core/DataModelTypes.h>
 
+namespace chip {
+namespace System {
+class Layer;
+} // namespace System
+} // namespace chip
+
 class CtDualPwmDriver
 {
 public:
@@ -55,9 +61,23 @@ public:
     static uint8_t ResolveLevelForPwmLocked(chip::EndpointId endpoint, bool on, uint8_t clusterLevel);
 
 private:
+    enum class FadeKind : uint8_t
+    {
+        kOnOff = 0,
+        kLevel = 1,
+        kCt    = 2,
+    };
+
     static void SaveStateBeforeFault();
     static void PwmOutputRestoreRegisters();
-    static void ApplyOutput();
+    static void ComputeFadeTargets(uint8_t & brightness, uint16_t & warmRatioFp);
+    static void CaptureFadeStartFromDisplay();
+    static void ApplyFadeFrame(uint16_t step);
+    static void ApplyDisplayDuties(uint8_t coolDuty, uint8_t warmDuty);
+    static void ApplyOutputImmediate();
+    static void ScheduleFade(FadeKind kind, bool restartFade);
+    static void CancelFadeTimer();
+    static void OnFadeTimer(chip::System::Layer * layer, void * appState);
     static uint8_t LevelToBrightnessPercent(uint8_t level);
     static uint8_t ResolveLevelForPwm(chip::EndpointId endpoint, bool on, uint8_t clusterLevel);
 
@@ -70,4 +90,15 @@ private:
     static bool sPreFaultOn;
     static uint8_t sPreFaultLevel;
     static uint16_t sPreFaultCtMireds;
+
+    static uint8_t sDisplayCoolDuty;
+    static uint8_t sDisplayWarmDuty;
+    static uint8_t sFadeStartBrightness;
+    static uint8_t sFadeTargetBrightness;
+    static uint16_t sFadeStartWarmRatioFp;
+    static uint16_t sFadeTargetWarmRatioFp;
+    static FadeKind sFadeKind;
+    static uint16_t sFadeStep;
+    static uint16_t sFadeStepsTotal;
+    static bool sFadeActive;
 };

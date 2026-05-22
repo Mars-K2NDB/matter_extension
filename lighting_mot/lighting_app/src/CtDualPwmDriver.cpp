@@ -24,6 +24,8 @@
 #include <lib/support/logging/CHIPLogging.h>
 #include <platform/CHIPDeviceLayer.h>
 #include <silabs_utils.h>
+#include <system/SystemClock.h>
+#include <system/SystemLayer.h>
 
 #include <algorithm>
 
@@ -37,7 +39,97 @@ bool CtDualPwmDriver::sPreFaultOn        = false;
 uint8_t CtDualPwmDriver::sPreFaultLevel    = 254;
 uint16_t CtDualPwmDriver::sPreFaultCtMireds = kDefaultCtMireds;
 
+uint8_t CtDualPwmDriver::sDisplayCoolDuty     = 0;
+uint8_t CtDualPwmDriver::sDisplayWarmDuty     = 0;
+uint8_t CtDualPwmDriver::sFadeStartBrightness  = 0;
+uint8_t CtDualPwmDriver::sFadeTargetBrightness = 0;
+uint16_t CtDualPwmDriver::sFadeStartWarmRatioFp  = 0;
+uint16_t CtDualPwmDriver::sFadeTargetWarmRatioFp = 0;
+CtDualPwmDriver::FadeKind CtDualPwmDriver::sFadeKind = FadeKind::kOnOff;
+uint16_t CtDualPwmDriver::sFadeStep           = 0;
+uint16_t CtDualPwmDriver::sFadeStepsTotal     = 0;
+bool CtDualPwmDriver::sFadeActive             = false;
+
 namespace {
+
+constexpr uint32_t kFadeTickMs          = 10;
+constexpr uint16_t kFadeDurationOnMs    = 500;
+constexpr uint16_t kFadeDurationOffMs   = 400;
+constexpr uint16_t kFadeDurationLevelMs = 350;
+constexpr uint16_t kFadeDurationCtMs    = 600;
+
+constexpr uint16_t kRatioFpOne = 65535U;
+
+uint16_t WarmRatioFpFromMireds(uint16_t mireds)
+{
+    const uint16_t ct = std::clamp(mireds, CtDualPwmDriver::kCtMinMireds, CtDualPwmDriver::kCtMaxMireds);
+    const uint32_t warmWeight = ct - CtDualPwmDriver::kCtMinMireds;
+    const uint32_t weightSum  = (CtDualPwmDriver::kCtMaxMireds - CtDualPwmDriver::kCtMinMireds);
+    if (weightSum == 0)
+    {
+        return kRatioFpOne / 2U;
+    }
+    return static_cast<uint16_t>((warmWeight * kRatioFpOne) / weightSum);
+}
+
+uint16_t WarmRatioFpFromDuties(uint8_t coolDuty, uint8_t warmDuty)
+{
+    const uint32_t sum = static_cast<uint32_t>(coolDuty) + static_cast<uint32_t>(warmDuty);
+    if (sum == 0)
+    {
+        return 0;
+    }
+    return static_cast<uint16_t>((static_cast<uint32_t>(warmDuty) * kRatioFpOne) / sum);
+}
+
+void DutiesFromBrightnessAndRatio(uint8_t brightness, uint16_t warmRatioFp, uint8_t & coolDuty, uint8_t & warmDuty)
+{
+    if (brightness == 0)
+    {
+        coolDuty = 0;
+        warmDuty = 0;
+        return;
+    }
+
+    warmDuty = static_cast<uint8_t>((static_cast<uint32_t>(brightness) * warmRatioFp) / kRatioFpOne);
+    coolDuty = brightness - warmDuty;
+}
+
+uint32_t SmoothstepT(uint16_t step, uint16_t total)
+{
+    if (total == 0 || step >= total)
+    {
+        return kRatioFpOne;
+    }
+
+    const uint32_t t = (static_cast<uint32_t>(step) * kRatioFpOne) / total;
+    const uint32_t t2 = (t * t) / kRatioFpOne;
+    return (t2 * (3U * kRatioFpOne - 2U * t)) / kRatioFpOne;
+}
+
+uint8_t InterpolateBrightness(uint8_t from, uint8_t to, uint16_t step, uint16_t total)
+{
+    if (total == 0 || step >= total)
+    {
+        return to;
+    }
+
+    const uint32_t t = SmoothstepT(step, total);
+    const int32_t delta = static_cast<int32_t>(to) - static_cast<int32_t>(from);
+    return static_cast<uint8_t>(static_cast<int32_t>(from) + (delta * static_cast<int32_t>(t)) / static_cast<int32_t>(kRatioFpOne));
+}
+
+uint16_t InterpolateWarmRatioFp(uint16_t from, uint16_t to, uint16_t step, uint16_t total)
+{
+    if (total == 0 || step >= total)
+    {
+        return to;
+    }
+
+    const uint32_t t = SmoothstepT(step, total);
+    const int32_t delta = static_cast<int32_t>(to) - static_cast<int32_t>(from);
+    return static_cast<uint16_t>(static_cast<int32_t>(from) + (delta * static_cast<int32_t>(t)) / static_cast<int32_t>(kRatioFpOne));
+}
 
 void PwmRouteDisable(const sl_pwm_instance_t & pwm)
 {
@@ -68,12 +160,12 @@ void PwmCompareZero(const sl_pwm_instance_t & pwm)
 #endif
 }
 
-void PwmSetDutyImmediate(const sl_pwm_instance_t & pwm, uint8_t percent)
+/** Glitch-free duty update: buffer only, loaded at next PWM period. */
+void PwmSetDutyBuffered(const sl_pwm_instance_t & pwm, uint8_t percent)
 {
 #if defined(_SILICON_LABS_32B_SERIES_2)
-    const uint32_t top  = TIMER_TopGet(pwm.timer);
-    const uint32_t cmp  = (top * static_cast<uint32_t>(percent)) / 100U;
-    TIMER_CompareSet(pwm.timer, pwm.channel, cmp);
+    const uint32_t top = TIMER_TopGet(pwm.timer);
+    const uint32_t cmp = (top * static_cast<uint32_t>(percent)) / 100U;
     TIMER_CompareBufSet(pwm.timer, pwm.channel, cmp);
 #else
     sl_pwm_set_duty_cycle(const_cast<sl_pwm_instance_t *>(&pwm), percent);
@@ -110,6 +202,18 @@ void PwmOutputKillRegisters()
     GpioForceOff(sl_pwm_pwm1, SL_PWM_PWM1_POLARITY == PWM_ACTIVE_HIGH);
 }
 
+void SeedPwmCompareFromDuty(const sl_pwm_instance_t & pwm, uint8_t percent)
+{
+#if defined(_SILICON_LABS_32B_SERIES_2)
+    const uint32_t top = TIMER_TopGet(pwm.timer);
+    const uint32_t cmp = (top * static_cast<uint32_t>(percent)) / 100U;
+    TIMER_CompareSet(pwm.timer, pwm.channel, cmp);
+    TIMER_CompareBufSet(pwm.timer, pwm.channel, cmp);
+#else
+    sl_pwm_set_duty_cycle(const_cast<sl_pwm_instance_t *>(&pwm), percent);
+#endif
+}
+
 } // namespace
 
 void CtDualPwmDriver::PwmOutputRestoreRegisters()
@@ -130,10 +234,10 @@ void CtDualPwmDriver::SaveStateBeforeFault()
         return;
     }
 
-    sPreFaultOn        = sOn;
-    sPreFaultLevel     = sLevel;
-    sPreFaultCtMireds  = sCtMireds;
-    sPreFaultSaved     = true;
+    sPreFaultOn       = sOn;
+    sPreFaultLevel    = sLevel;
+    sPreFaultCtMireds = sCtMireds;
+    sPreFaultSaved    = true;
 }
 
 bool CtDualPwmDriver::GetPreFaultState(bool & on, uint8_t & level, uint16_t & ctMireds)
@@ -143,10 +247,193 @@ bool CtDualPwmDriver::GetPreFaultState(bool & on, uint8_t & level, uint16_t & ct
         return false;
     }
 
-    on      = sPreFaultOn;
-    level   = sPreFaultLevel;
+    on       = sPreFaultOn;
+    level    = sPreFaultLevel;
     ctMireds = sPreFaultCtMireds;
     return true;
+}
+
+void CtDualPwmDriver::CancelFadeTimer()
+{
+    if (!sFadeActive)
+    {
+        return;
+    }
+
+    chip::DeviceLayer::PlatformMgr().LockChipStack();
+    chip::DeviceLayer::SystemLayer().CancelTimer(OnFadeTimer, nullptr);
+    chip::DeviceLayer::PlatformMgr().UnlockChipStack();
+    sFadeActive = false;
+}
+
+void CtDualPwmDriver::ComputeFadeTargets(uint8_t & brightness, uint16_t & warmRatioFp)
+{
+    brightness  = sOn ? LevelToBrightnessPercent(sLevel) : 0;
+    warmRatioFp = WarmRatioFpFromMireds(sCtMireds);
+}
+
+void CtDualPwmDriver::CaptureFadeStartFromDisplay()
+{
+    const uint8_t sum = static_cast<uint8_t>(sDisplayCoolDuty + sDisplayWarmDuty);
+    sFadeStartBrightness = sum;
+    sFadeStartWarmRatioFp =
+        (sum > 0) ? WarmRatioFpFromDuties(sDisplayCoolDuty, sDisplayWarmDuty) : WarmRatioFpFromMireds(sCtMireds);
+}
+
+void CtDualPwmDriver::ApplyFadeFrame(uint16_t step)
+{
+    const uint8_t brightness = InterpolateBrightness(sFadeStartBrightness, sFadeTargetBrightness, step, sFadeStepsTotal);
+    const uint16_t warmRatioFp =
+        InterpolateWarmRatioFp(sFadeStartWarmRatioFp, sFadeTargetWarmRatioFp, step, sFadeStepsTotal);
+
+    uint8_t coolDuty = 0;
+    uint8_t warmDuty = 0;
+    DutiesFromBrightnessAndRatio(brightness, warmRatioFp, coolDuty, warmDuty);
+    ApplyDisplayDuties(coolDuty, warmDuty);
+}
+
+void CtDualPwmDriver::ApplyDisplayDuties(uint8_t coolDuty, uint8_t warmDuty)
+{
+    if (OvercurrentProtector::IsFaultActive())
+    {
+        PwmOutputKillRegisters();
+        sRouteDisabled = true;
+        return;
+    }
+
+    if (sRouteDisabled || !sPwmStarted)
+    {
+        PwmOutputRestoreRegisters();
+        SeedPwmCompareFromDuty(sl_pwm_pwm0, coolDuty);
+        SeedPwmCompareFromDuty(sl_pwm_pwm1, warmDuty);
+    }
+    else
+    {
+        PwmSetDutyBuffered(sl_pwm_pwm0, coolDuty);
+        PwmSetDutyBuffered(sl_pwm_pwm1, warmDuty);
+    }
+
+    sDisplayCoolDuty = coolDuty;
+    sDisplayWarmDuty = warmDuty;
+
+    ChipLogDetail(Zcl, "CtPwm duty: cool=%u warm=%u (on=%u level=%u ct=%u)", coolDuty, warmDuty, sOn, sLevel, sCtMireds);
+}
+
+void CtDualPwmDriver::ApplyOutputImmediate()
+{
+    CancelFadeTimer();
+
+    uint8_t brightness  = 0;
+    uint16_t warmRatioFp = 0;
+    ComputeFadeTargets(brightness, warmRatioFp);
+
+    uint8_t coolDuty = 0;
+    uint8_t warmDuty = 0;
+    DutiesFromBrightnessAndRatio(brightness, warmRatioFp, coolDuty, warmDuty);
+    ApplyDisplayDuties(coolDuty, warmDuty);
+}
+
+void CtDualPwmDriver::ScheduleFade(FadeKind kind, bool restartFade)
+{
+    if (OvercurrentProtector::IsFaultActive())
+    {
+        ApplyOutputImmediate();
+        return;
+    }
+
+    uint8_t targetBrightness  = 0;
+    uint16_t targetWarmRatioFp = 0;
+    ComputeFadeTargets(targetBrightness, targetWarmRatioFp);
+
+    if (kind == FadeKind::kCt && sFadeActive && sFadeKind == FadeKind::kCt && !restartFade)
+    {
+        sFadeTargetWarmRatioFp = targetWarmRatioFp;
+        sFadeTargetBrightness  = targetBrightness;
+
+        const uint8_t sum = static_cast<uint8_t>(sDisplayCoolDuty + sDisplayWarmDuty);
+        if (sum == targetBrightness &&
+            WarmRatioFpFromDuties(sDisplayCoolDuty, sDisplayWarmDuty) == targetWarmRatioFp)
+        {
+            CancelFadeTimer();
+        }
+        return;
+    }
+
+    CaptureFadeStartFromDisplay();
+    sFadeTargetBrightness  = targetBrightness;
+    sFadeTargetWarmRatioFp = targetWarmRatioFp;
+    sFadeKind              = kind;
+
+    if (sFadeStartBrightness == sFadeTargetBrightness && sFadeStartWarmRatioFp == sFadeTargetWarmRatioFp)
+    {
+        CancelFadeTimer();
+        ApplyFadeFrame(sFadeStepsTotal);
+        return;
+    }
+
+    uint16_t durationMs = kFadeDurationLevelMs;
+    switch (kind)
+    {
+    case FadeKind::kOnOff:
+        durationMs = sOn ? kFadeDurationOnMs : kFadeDurationOffMs;
+        break;
+    case FadeKind::kLevel:
+        durationMs = kFadeDurationLevelMs;
+        break;
+    case FadeKind::kCt:
+        durationMs = kFadeDurationCtMs;
+        break;
+    }
+
+    const bool mustRestart = restartFade || !sFadeActive || sFadeKind != kind;
+
+    if (mustRestart)
+    {
+        sFadeStep       = 0;
+        sFadeStepsTotal = std::max<uint16_t>(durationMs / static_cast<uint16_t>(kFadeTickMs), 1U);
+        CancelFadeTimer();
+
+        ApplyFadeFrame(0);
+
+        chip::DeviceLayer::PlatformMgr().LockChipStack();
+        const CHIP_ERROR err = chip::DeviceLayer::SystemLayer().StartTimer(chip::System::Clock::Milliseconds32(kFadeTickMs),
+                                                                           OnFadeTimer, nullptr);
+        chip::DeviceLayer::PlatformMgr().UnlockChipStack();
+
+        if (err != CHIP_NO_ERROR)
+        {
+            ApplyOutputImmediate();
+            return;
+        }
+
+        sFadeActive = true;
+    }
+}
+
+void CtDualPwmDriver::OnFadeTimer(chip::System::Layer * layer, void * appState)
+{
+    (void) layer;
+    (void) appState;
+
+    if (!sFadeActive || OvercurrentProtector::IsFaultActive())
+    {
+        sFadeActive = false;
+        return;
+    }
+
+    sFadeStep++;
+
+    if (sFadeStep >= sFadeStepsTotal)
+    {
+        sFadeActive = false;
+        ApplyFadeFrame(sFadeStepsTotal);
+        return;
+    }
+
+    ApplyFadeFrame(sFadeStep);
+
+    (void) chip::DeviceLayer::SystemLayer().StartTimer(chip::System::Clock::Milliseconds32(kFadeTickMs), OnFadeTimer,
+                                                       nullptr);
 }
 
 void CtDualPwmDriver::RecoverFromFault()
@@ -158,7 +445,7 @@ void CtDualPwmDriver::RecoverFromFault()
     }
 
     PwmOutputRestoreRegisters();
-    ApplyOutput();
+    ApplyOutputImmediate();
 }
 
 void CtDualPwmDriver::RestoreToPreFault(bool on, uint8_t level, uint16_t ctMireds)
@@ -169,16 +456,16 @@ void CtDualPwmDriver::RestoreToPreFault(bool on, uint8_t level, uint16_t ctMired
     sPreFaultSaved = false;
 
     PwmOutputRestoreRegisters();
-    ApplyOutput();
+    ApplyOutputImmediate();
 
     ChipLogProgress(AppServer, "CtPwm RECOVER: on=%u level=%u ct=%u", sOn, sLevel, sCtMireds);
 }
 
 void CtDualPwmDriver::LogVersion()
 {
-    SILABS_LOG("CtDualPwm driver v%s (PWM0=cool, PWM1=warm, mired %u-%u)", CT_DUAL_PWM_DRIVER_VERSION,
+    SILABS_LOG("CtDualPwm driver v%s (PWM0=cool, PWM1=warm, mired %u-%u, fade)", CT_DUAL_PWM_DRIVER_VERSION,
                static_cast<unsigned>(kCtMinMireds), static_cast<unsigned>(kCtMaxMireds));
-    ChipLogProgress(AppServer, "CtDualPwm driver v%s (PWM0=cool, PWM1=warm)", CT_DUAL_PWM_DRIVER_VERSION);
+    ChipLogProgress(AppServer, "CtDualPwm driver v%s (PWM0=cool, PWM1=warm, fade)", CT_DUAL_PWM_DRIVER_VERSION);
 }
 
 void CtDualPwmDriver::Init()
@@ -191,13 +478,16 @@ void CtDualPwmDriver::Init()
         sl_pwm_start(&sl_pwm_pwm1);
         sPwmStarted = true;
     }
-    ApplyOutput();
+    ApplyOutputImmediate();
 }
 
 void CtDualPwmDriver::ForceOffForFaultFromIsr()
 {
     SaveStateBeforeFault();
     sOn = false;
+    sDisplayCoolDuty = 0;
+    sDisplayWarmDuty = 0;
+    sFadeActive        = false;
     PwmOutputKillRegisters();
     sRouteDisabled = true;
 }
@@ -206,6 +496,9 @@ void CtDualPwmDriver::ForceOffForFault()
 {
     SaveStateBeforeFault();
     sOn = false;
+    CancelFadeTimer();
+    sDisplayCoolDuty = 0;
+    sDisplayWarmDuty = 0;
     PwmOutputKillRegisters();
     sRouteDisabled = true;
 }
@@ -223,14 +516,18 @@ void CtDualPwmDriver::SetOn(bool on)
     {
         sLevel = 254;
     }
-    ApplyOutput();
+    ScheduleFade(FadeKind::kOnOff, true);
     ChipLogProgress(Zcl, "CtPwm On -> %u (ct=%u level=%u)", on, sCtMireds, sLevel);
 }
 
 void CtDualPwmDriver::SetLevel(uint8_t level)
 {
     sLevel = level;
-    ApplyOutput();
+    if (!sOn)
+    {
+        return;
+    }
+    ScheduleFade(FadeKind::kLevel, true);
 }
 
 void CtDualPwmDriver::ApplyClusterLevel(chip::EndpointId endpoint, uint8_t clusterLevel)
@@ -247,13 +544,19 @@ void CtDualPwmDriver::ApplyClusterLevel(chip::EndpointId endpoint, uint8_t clust
     }
 
     sLevel = ResolveLevelForPwm(endpoint, true, clusterLevel);
-    ApplyOutput();
+    ScheduleFade(FadeKind::kLevel, true);
 }
 
 void CtDualPwmDriver::SetColorTemperatureMireds(uint16_t mireds)
 {
     sCtMireds = mireds;
-    ApplyOutput();
+    if (!sOn)
+    {
+        return;
+    }
+
+    // Matter MoveToColorTemperature streams attribute updates; chase target without restarting fade.
+    ScheduleFade(FadeKind::kCt, false);
     ChipLogProgress(Zcl, "CtPwm CT -> %u mireds (on=%u level=%u)", mireds, sOn, sLevel);
 }
 
@@ -303,7 +606,7 @@ void CtDualPwmDriver::RefreshFromMatterEndpoint(chip::EndpointId endpoint)
     if (OvercurrentProtector::IsFaultActive())
     {
         sOn = false;
-        ApplyOutput();
+        ApplyOutputImmediate();
         return;
     }
 
@@ -333,7 +636,7 @@ void CtDualPwmDriver::RefreshFromMatterEndpoint(chip::EndpointId endpoint)
     sLevel    = level;
     sCtMireds = ctMireds;
 
-    ApplyOutput();
+    ApplyOutputImmediate();
 
     ChipLogProgress(Zcl, "CtPwm sync: on=%u level=%u ct=%u", on, level, ctMireds);
 }
@@ -352,46 +655,4 @@ uint8_t CtDualPwmDriver::LevelToBrightnessPercent(uint8_t level)
         return 0;
     }
     return static_cast<uint8_t>(1U + (static_cast<uint32_t>(level - 1U) * 99U) / 253U);
-}
-
-void CtDualPwmDriver::ApplyOutput()
-{
-    if (OvercurrentProtector::IsFaultActive())
-    {
-        PwmOutputKillRegisters();
-        sRouteDisabled = true;
-        return;
-    }
-
-    if (sRouteDisabled || !sPwmStarted)
-    {
-        PwmOutputRestoreRegisters();
-    }
-
-    if (!sOn)
-    {
-        PwmSetDutyImmediate(sl_pwm_pwm0, 0);
-        PwmSetDutyImmediate(sl_pwm_pwm1, 0);
-        return;
-    }
-
-    const uint16_t ct = std::clamp(sCtMireds, kCtMinMireds, kCtMaxMireds);
-
-    const uint32_t coolWeight = kCtMaxMireds - ct;
-    const uint32_t warmWeight = ct - kCtMinMireds;
-    const uint32_t weightSum  = coolWeight + warmWeight;
-    const uint8_t brightness  = LevelToBrightnessPercent(sLevel);
-
-    uint8_t coolDuty = 0;
-    uint8_t warmDuty = 0;
-    if (weightSum > 0)
-    {
-        coolDuty = static_cast<uint8_t>((static_cast<uint32_t>(brightness) * coolWeight) / weightSum);
-        warmDuty = static_cast<uint8_t>((static_cast<uint32_t>(brightness) * warmWeight) / weightSum);
-    }
-
-    PwmSetDutyImmediate(sl_pwm_pwm0, coolDuty);
-    PwmSetDutyImmediate(sl_pwm_pwm1, warmDuty);
-
-    ChipLogDetail(Zcl, "CtPwm duty: cool=%u warm=%u (ct=%u brightness=%u)", coolDuty, warmDuty, ct, brightness);
 }

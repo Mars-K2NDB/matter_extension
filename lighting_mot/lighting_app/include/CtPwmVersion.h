@@ -4,4 +4,4 @@
 
 #pragma once
 
-#define CT_DUAL_PWM_DRIVER_VERSION "1.3.1"
+#define CT_DUAL_PWM_DRIVER_VERSION "1.4.1"
