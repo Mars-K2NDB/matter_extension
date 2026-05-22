@@ -27,8 +27,13 @@ private:
     static void Trip();
     static void Recover();
     static void ProcessDeferredTrip();
+    static void SavePreFaultSnapshot();
 
     static bool sFaultActive;
+    static bool sSnapValid;
+    static bool sSnapOn;
+    static uint8_t sSnapLevel;
+    static uint16_t sSnapCtMireds;
     static bool sMatterOffPending;
     static uint32_t sAvgMillivolts;
     static uint32_t sRecoveryMs;

@@ -32,6 +32,10 @@ using namespace chip::DeviceLayer;
 
 bool OvercurrentProtector::sFaultActive       = false;
 bool OvercurrentProtector::sMatterOffPending  = false;
+bool OvercurrentProtector::sSnapValid         = false;
+bool OvercurrentProtector::sSnapOn            = false;
+uint8_t OvercurrentProtector::sSnapLevel      = 0;
+uint16_t OvercurrentProtector::sSnapCtMireds    = CtDualPwmDriver::kDefaultCtMireds;
 uint32_t OvercurrentProtector::sAvgMillivolts = 0;
 uint32_t OvercurrentProtector::sRecoveryMs   = 0;
 uint32_t OvercurrentProtector::sSampleRing[OVERCURRENT_AVG_SAMPLES] = {};
@@ -76,21 +80,24 @@ void RestoreMatterLightState(bool on, uint8_t level, uint16_t ctMireds)
 
     PlatformMgr().LockChipStack();
 
-    OnOffServer::Instance().setOnOffValue(LIGHT_ENDPOINT, on ? 1U : 0U, false);
-    MatterReportingAttributeChangeCallback(
-        ConcreteAttributePath(LIGHT_ENDPOINT, OnOff::Id, OnOff::Attributes::OnOff::Id));
-
-    if (LevelControl::Attributes::CurrentLevel::Set(LIGHT_ENDPOINT, level) == Status::Success)
-    {
-        MatterReportingAttributeChangeCallback(
-            ConcreteAttributePath(LIGHT_ENDPOINT, LevelControl::Id, LevelControl::Attributes::CurrentLevel::Id));
-    }
+    // Match CtDualPwm: Matter CurrentLevel==1 while on maps to effective PWM brightness level.
+    const uint8_t matterLevel = on ? CtDualPwmDriver::ResolveLevelForPwmLocked(LIGHT_ENDPOINT, true, level) : level;
 
     if (ColorControl::Attributes::ColorTemperatureMireds::Set(LIGHT_ENDPOINT, ct) == Status::Success)
     {
         MatterReportingAttributeChangeCallback(ConcreteAttributePath(LIGHT_ENDPOINT, ColorControl::Id,
                                                                      ColorControl::Attributes::ColorTemperatureMireds::Id));
     }
+
+    if (on && LevelControl::Attributes::CurrentLevel::Set(LIGHT_ENDPOINT, matterLevel) == Status::Success)
+    {
+        MatterReportingAttributeChangeCallback(
+            ConcreteAttributePath(LIGHT_ENDPOINT, LevelControl::Id, LevelControl::Attributes::CurrentLevel::Id));
+    }
+
+    OnOffServer::Instance().setOnOffValue(LIGHT_ENDPOINT, on ? 1U : 0U, false);
+    MatterReportingAttributeChangeCallback(
+        ConcreteAttributePath(LIGHT_ENDPOINT, OnOff::Id, OnOff::Attributes::OnOff::Id));
 
     PlatformMgr().UnlockChipStack();
 }
@@ -101,10 +108,61 @@ void OvercurrentProtector::Init()
 {
     sFaultActive       = false;
     sMatterOffPending  = false;
+    sSnapValid         = false;
     sAvgMillivolts     = 0;
     sRecoveryMs        = 0;
     sSampleCount       = 0;
     sSampleIndex       = 0;
+}
+
+void OvercurrentProtector::SavePreFaultSnapshot()
+{
+    if (sSnapValid)
+    {
+        return;
+    }
+
+    bool on           = false;
+    uint8_t level     = 254;
+    uint16_t ctMireds = CtDualPwmDriver::kDefaultCtMireds;
+
+    // ISR already saved real PWM levels (e.g. level=254 while Matter CurrentLevel==1).
+    if (CtDualPwmDriver::GetPreFaultState(on, level, ctMireds))
+    {
+        sSnapOn       = on;
+        sSnapLevel    = level;
+        sSnapCtMireds = ctMireds;
+        sSnapValid    = true;
+        ChipLogProgress(AppServer, "Protection snapshot (driver): on=%u level=%u ct=%u", on, level, ctMireds);
+        return;
+    }
+
+    using namespace chip::Protocols::InteractionModel;
+
+    PlatformMgr().LockChipStack();
+
+    OnOffServer::Instance().getOnOffValue(LIGHT_ENDPOINT, &on);
+
+    DataModel::Nullable<uint8_t> currentLevel;
+    if (LevelControl::Attributes::CurrentLevel::Get(LIGHT_ENDPOINT, currentLevel) == Status::Success && !currentLevel.IsNull())
+    {
+        level = currentLevel.Value();
+    }
+    level = CtDualPwmDriver::ResolveLevelForPwmLocked(LIGHT_ENDPOINT, on, level);
+
+    if (ColorControl::Attributes::ColorTemperatureMireds::Get(LIGHT_ENDPOINT, &ctMireds) != Status::Success)
+    {
+        ctMireds = CtDualPwmDriver::kDefaultCtMireds;
+    }
+
+    PlatformMgr().UnlockChipStack();
+
+    sSnapOn       = on;
+    sSnapLevel    = level;
+    sSnapCtMireds = ctMireds;
+    sSnapValid    = true;
+
+    ChipLogProgress(AppServer, "Protection snapshot (matter): on=%u level=%u ct=%u", on, level, ctMireds);
 }
 
 void OvercurrentProtector::UpdateAverage(uint32_t millivolts)
@@ -165,6 +223,7 @@ void OvercurrentProtector::ProcessDeferredTrip()
     }
 
     sMatterOffPending = false;
+    SavePreFaultSnapshot();
     SetMatterOnOff(false);
     ChipLogError(AppServer, "Short-circuit TRIP (PB00 falling edge)");
 }
@@ -180,6 +239,7 @@ void OvercurrentProtector::Trip()
     sRecoveryMs   = 0;
 
     CtDualPwmDriver::ForceOffForFault();
+    SavePreFaultSnapshot();
 
     SetMatterOnOff(false);
 
@@ -200,16 +260,29 @@ void OvercurrentProtector::Recover()
 
     ShortCircuitProtector::OnRecover();
 
-    bool restoreOn = false;
+    bool restoreOn     = false;
     uint8_t restoreLevel = 0;
     uint16_t restoreCt   = CtDualPwmDriver::kDefaultCtMireds;
-    if (CtDualPwmDriver::GetPreFaultState(restoreOn, restoreLevel, restoreCt))
+
+    if (sSnapValid)
     {
-        RestoreMatterLightState(restoreOn, restoreLevel, restoreCt);
+        restoreOn     = sSnapOn;
+        restoreLevel  = sSnapLevel;
+        restoreCt     = sSnapCtMireds;
+        sSnapValid    = false;
+    }
+    else if (CtDualPwmDriver::GetPreFaultState(restoreOn, restoreLevel, restoreCt))
+    {
+        // Fallback: driver snapshot from ISR trip before deferred Matter save.
+    }
+    else
+    {
+        ChipLogProgress(AppServer, "Protection RECOVER: no snapshot, stay off");
+        return;
     }
 
-    CtDualPwmDriver::RecoverFromFault();
-    CtDualPwmDriver::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
+    CtDualPwmDriver::RestoreToPreFault(restoreOn, restoreLevel, restoreCt);
+    RestoreMatterLightState(restoreOn, restoreLevel, restoreCt);
 
     ChipLogProgress(AppServer, "Protection RECOVER: on=%u level=%u ct=%u (avg=%lu mV)", restoreOn, restoreLevel, restoreCt,
                     static_cast<unsigned long>(sAvgMillivolts));

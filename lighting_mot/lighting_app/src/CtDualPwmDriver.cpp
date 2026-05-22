@@ -89,13 +89,25 @@ void RestorePwmPinMode(const sl_pwm_instance_t & pwm, bool activeHigh)
     (void) sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_PUSH_PULL, activeHigh);
 }
 
-/** Register-level PWM kill: compare 0 + disconnect TIMER route (no GPIO hold). */
+/** After route disable, hold PWM pin in off state (active-high -> GPIO low). */
+void GpioForceOff(const sl_pwm_instance_t & pwm, bool activeHigh)
+{
+    sl_gpio_t gpio = {
+        .port = pwm.port,
+        .pin  = pwm.pin,
+    };
+    (void) sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_PUSH_PULL, activeHigh ? 0 : 1);
+}
+
+/** Register-level PWM kill: compare 0, disconnect route, GPIO force off. */
 void PwmOutputKillRegisters()
 {
     PwmCompareZero(sl_pwm_pwm0);
     PwmCompareZero(sl_pwm_pwm1);
     PwmRouteDisable(sl_pwm_pwm0);
     PwmRouteDisable(sl_pwm_pwm1);
+    GpioForceOff(sl_pwm_pwm0, SL_PWM_PWM0_POLARITY == PWM_ACTIVE_HIGH);
+    GpioForceOff(sl_pwm_pwm1, SL_PWM_PWM1_POLARITY == PWM_ACTIVE_HIGH);
 }
 
 } // namespace
@@ -139,16 +151,24 @@ bool CtDualPwmDriver::GetPreFaultState(bool & on, uint8_t & level, uint16_t & ct
 
 void CtDualPwmDriver::RecoverFromFault()
 {
-    PwmOutputRestoreRegisters();
-
     if (sPreFaultSaved)
     {
-        sOn       = sPreFaultOn;
-        sLevel    = sPreFaultLevel;
-        sCtMireds = sPreFaultCtMireds;
-        sPreFaultSaved = false;
+        RestoreToPreFault(sPreFaultOn, sPreFaultLevel, sPreFaultCtMireds);
+        return;
     }
 
+    PwmOutputRestoreRegisters();
+    ApplyOutput();
+}
+
+void CtDualPwmDriver::RestoreToPreFault(bool on, uint8_t level, uint16_t ctMireds)
+{
+    sOn            = on;
+    sLevel         = level;
+    sCtMireds      = std::clamp(ctMireds, kCtMinMireds, kCtMaxMireds);
+    sPreFaultSaved = false;
+
+    PwmOutputRestoreRegisters();
     ApplyOutput();
 
     ChipLogProgress(AppServer, "CtPwm RECOVER: on=%u level=%u ct=%u", sOn, sLevel, sCtMireds);

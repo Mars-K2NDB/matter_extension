@@ -41,22 +41,25 @@ public:
     static void ForceOffForFaultFromIsr();
 
     /**
-     * After fault clears: re-enable TIMER routes and restore pre-fault on/level/CT to PWM.
+     * After fault clears: re-enable TIMER routes and restore on/level/CT to PWM.
      */
     static void RecoverFromFault();
 
-    /** Pre-fault snapshot saved on first trip; false if none. */
+    /** Restore PWM from explicit pre-fault light state (used on protection exit). */
+    static void RestoreToPreFault(bool on, uint8_t level, uint16_t ctMireds);
+
+    /** Driver-only snapshot on trip; false if none. */
     static bool GetPreFaultState(bool & on, uint8_t & level, uint16_t & ctMireds);
+
+    /** Caller must hold the chip stack lock. Maps min Matter level (1) to PWM brightness level. */
+    static uint8_t ResolveLevelForPwmLocked(chip::EndpointId endpoint, bool on, uint8_t clusterLevel);
 
 private:
     static void SaveStateBeforeFault();
     static void PwmOutputRestoreRegisters();
     static void ApplyOutput();
     static uint8_t LevelToBrightnessPercent(uint8_t level);
-    /** Map Matter level to PWM brightness; handles on-at-min-level (CurrentLevel==1). */
     static uint8_t ResolveLevelForPwm(chip::EndpointId endpoint, bool on, uint8_t clusterLevel);
-    /** Like ResolveLevelForPwm; caller must hold the chip stack lock. */
-    static uint8_t ResolveLevelForPwmLocked(chip::EndpointId endpoint, bool on, uint8_t clusterLevel);
 
     static bool sOn;
     static uint8_t sLevel;
