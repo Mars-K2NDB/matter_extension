@@ -1,9 +1,5 @@
-# VS Code Configs
-.vscode/*
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/settings.json
-!.vscode/extensions.json
+# VS Code (local IDE settings)
+.vscode/
 
 # Platforms
 .DS_Store
@@ -21,6 +17,18 @@ out/
 /src/test_driver/nrfconnect/build/
 /src/darwin/Framework/build/
 slc/tools/
+
+# Silicon Labs SLC / sl_build.py outputs (lighting_mot app, bootloader, solution)
+#   cmake:   <project>/cmake_gcc|iar|llvm/build  or  <solution>_cmake/build
+#   flash:   <project>/artifact/  and  lighting_mot/artifact/
+lighting_mot/**/cmake_gcc/build/
+lighting_mot/**/cmake_iar/build/
+lighting_mot/**/cmake_llvm/build/
+lighting_mot/**/*_cmake/build/
+lighting_mot/**/artifact/
+lighting_mot/artifact/
+**/.ninja_log
+**/.projectlinkstore
 
 # Pigweed Environment
 .environment/

@@ -28,6 +28,7 @@
 
 #include "AppConfig.h"
 #include "CtDualPwmDriver.h"
+#include "DeviceUserFlash.h"
 #include "OvercurrentProtector.h"
 #include "ShortCircuitProtector.h"
 #include "VoltageAdcDriver.h"
@@ -52,6 +53,9 @@ using namespace chip::DeviceLayer;
 CustomerAppTask CustomerAppTask::sAppTask;
 
 namespace {
+
+bool sCtPwmOutputsReady = false;
+
 
 /** Push CT/RemainingTime to active subscriptions (commissioner apps wait for these reports). */
 void NotifyColorTempAttributeReports(EndpointId endpoint)
@@ -92,6 +96,10 @@ void CtPwmEventHandler(AppEvent * aEvent)
 
 void PostCtPwmEvent(const AppEvent & eventTemplate)
 {
+    if (!sCtPwmOutputsReady)
+    {
+        return;
+    }
     AppEvent event = eventTemplate;
     event.Handler  = CtPwmEventHandler;
     CustomerAppTask::GetAppTask().PostEvent(&event);
@@ -106,6 +114,16 @@ AppTask & AppTask::GetAppTask()
 
 CHIP_ERROR CustomerAppTask::InitLightImpl()
 {
+    if (DeviceUserFlash::ProcessPowerCycleReset())
+    {
+        return CHIP_NO_ERROR;
+    }
+
+    // Register reconnect reporting before stack may already be up.
+    DeviceUserFlash::Init();
+
+    DeviceUserFlash::LoadSavedLightState();
+
     ReturnErrorOnFailure(AppTask::InitLight());
 
     CtDualPwmDriver::Init();
@@ -114,7 +132,6 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     ShortCircuitProtector::Init();
     VoltageAdcDriver::StartPeriodicSampling();
 
-    // Ensure Color Control cluster advertises CT and has a valid starting mired value.
     PlatformMgr().LockChipStack();
     using namespace chip::app::Clusters;
     using namespace chip::Protocols::InteractionModel;
@@ -127,16 +144,25 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
         ColorControl::Attributes::ColorCapabilities::Set(LIGHT_ENDPOINT, caps);
     }
 
-    uint16_t ctMireds = 0;
-    if (ColorControl::Attributes::ColorTemperatureMireds::Get(LIGHT_ENDPOINT, &ctMireds) != Status::Success ||
-        ctMireds < CtDualPwmDriver::kCtMinMireds || ctMireds > CtDualPwmDriver::kCtMaxMireds)
+    DeviceUserFlash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);
+
+    if (!DeviceUserFlash::HasPersistedLightState())
     {
-        ctMireds = CtDualPwmDriver::kDefaultCtMireds;
-        ColorControl::Attributes::ColorTemperatureMireds::Set(LIGHT_ENDPOINT, ctMireds);
+        uint16_t ctMireds = 0;
+        if (ColorControl::Attributes::ColorTemperatureMireds::Get(LIGHT_ENDPOINT, &ctMireds) != Status::Success ||
+            ctMireds < CtDualPwmDriver::kCtMinMireds || ctMireds > CtDualPwmDriver::kCtMaxMireds)
+        {
+            ColorControl::Attributes::ColorTemperatureMireds::Set(LIGHT_ENDPOINT, CtDualPwmDriver::kDefaultCtMireds);
+        }
     }
     PlatformMgr().UnlockChipStack();
 
+    // Load restored level/CT into PWM driver while lamp stays off.
     CtDualPwmDriver::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
+    CtDualPwmDriver::SetOn(false);
+
+    DeviceUserFlash::EnablePersistedLightStateSave();
+    sCtPwmOutputsReady = true;
 
     return CHIP_NO_ERROR;
 }
@@ -209,8 +235,9 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
             event.CtPwmEvent.Kind  = AppEvent::kCtPwmLevel;
             event.CtPwmEvent.Level = *value;
             PostCtPwmEvent(event);
+            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
         }
-        break;
+        break; // level/CT only; OnOff is not persisted
 
     case ColorControl::Id:
         if (attributeId == ColorControl::Attributes::ColorTemperatureMireds::Id && value != nullptr &&
@@ -223,6 +250,7 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
             PostCtPwmEvent(event);
             // Attribute is already in the Matter store; push reports without waiting for PWM queue.
             NotifyColorTempAttributeReports(attributePath.mEndpointId);
+            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
             return;
         }
         if (attributeId == ColorControl::Attributes::ColorMode::Id ||
@@ -230,6 +258,7 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
         {
             // handleModeSwitch updates these before CT; apps often wait for mode reports.
             MatterReportingAttributeChangeCallback(attributePath);
+            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
             return;
         }
         // Skip AppTask RGB handler during other Color Control attributes.

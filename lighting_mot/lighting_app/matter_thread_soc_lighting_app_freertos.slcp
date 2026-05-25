@@ -21,6 +21,7 @@ readme:
 source:
 - path: src/CustomerAppTask.cpp
 - path: src/CtDualPwmDriver.cpp
+- path: src/DeviceUserFlash.cpp
 - path: src/VoltageAdcDriver.cpp
 - path: src/OvercurrentProtector.cpp
 - path: src/ShortCircuitProtector.cpp
@@ -35,6 +36,7 @@ include:
   file_list:
   - path: CustomerAppTask.h
   - path: CtDualPwmDriver.h
+  - path: DeviceUserFlash.h
   - path: CtPwmVersion.h
   - path: VoltageAdcDriver.h
   - path: voltage_adc_config.h
