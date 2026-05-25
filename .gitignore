@@ -18,15 +18,14 @@ out/
 /src/darwin/Framework/build/
 slc/tools/
 
-# Silicon Labs SLC / sl_build.py outputs (lighting_mot app, bootloader, solution)
+# Silicon Labs SLC / sl_build.py outputs (all projects: .slcp app, .slcw solution, bootloader)
 #   cmake:   <project>/cmake_gcc|iar|llvm/build  or  <solution>_cmake/build
-#   flash:   <project>/artifact/  and  lighting_mot/artifact/
-lighting_mot/**/cmake_gcc/build/
-lighting_mot/**/cmake_iar/build/
-lighting_mot/**/cmake_llvm/build/
-lighting_mot/**/*_cmake/build/
-lighting_mot/**/artifact/
-lighting_mot/artifact/
+#   flash:   <project>/artifact/
+**/cmake_gcc/build/
+**/cmake_iar/build/
+**/cmake_llvm/build/
+**/*_cmake/build/
+**/artifact/
 **/.ninja_log
 **/.projectlinkstore
 
