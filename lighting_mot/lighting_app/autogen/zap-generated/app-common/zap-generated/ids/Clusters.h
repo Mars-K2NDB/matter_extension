@@ -107,7 +107,6 @@
 #include <clusters/Thermostat/ClusterId.h>
 #include <clusters/FanControl/ClusterId.h>
 #include <clusters/ThermostatUserInterfaceConfiguration/ClusterId.h>
-#include <clusters/Humidistat/ClusterId.h>
 #include <clusters/ColorControl/ClusterId.h>
 #include <clusters/BallastConfiguration/ClusterId.h>
 #include <clusters/IlluminanceMeasurement/ClusterId.h>
@@ -127,9 +126,6 @@
 #include <clusters/TotalVolatileOrganicCompoundsConcentrationMeasurement/ClusterId.h>
 #include <clusters/RadonConcentrationMeasurement/ClusterId.h>
 #include <clusters/SoilMeasurement/ClusterId.h>
-#include <clusters/AmbientContextSensing/ClusterId.h>
-#include <clusters/ProximityRanging/ClusterId.h>
-#include <clusters/NetworkIdentityManagement/ClusterId.h>
 #include <clusters/WiFiNetworkManagement/ClusterId.h>
 #include <clusters/ThreadBorderRouterManagement/ClusterId.h>
 #include <clusters/ThreadNetworkDirectory/ClusterId.h>

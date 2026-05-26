@@ -372,10 +372,6 @@
 #include <clusters/ThermostatUserInterfaceConfiguration/Commands.ipp>
 #include <clusters/ThermostatUserInterfaceConfiguration/Events.ipp>
 #include <clusters/ThermostatUserInterfaceConfiguration/Structs.ipp>
-#include <clusters/Humidistat/Attributes.ipp>
-#include <clusters/Humidistat/Commands.ipp>
-#include <clusters/Humidistat/Events.ipp>
-#include <clusters/Humidistat/Structs.ipp>
 #include <clusters/ColorControl/Attributes.ipp>
 #include <clusters/ColorControl/Commands.ipp>
 #include <clusters/ColorControl/Events.ipp>
@@ -452,18 +448,6 @@
 #include <clusters/SoilMeasurement/Commands.ipp>
 #include <clusters/SoilMeasurement/Events.ipp>
 #include <clusters/SoilMeasurement/Structs.ipp>
-#include <clusters/AmbientContextSensing/Attributes.ipp>
-#include <clusters/AmbientContextSensing/Commands.ipp>
-#include <clusters/AmbientContextSensing/Events.ipp>
-#include <clusters/AmbientContextSensing/Structs.ipp>
-#include <clusters/ProximityRanging/Attributes.ipp>
-#include <clusters/ProximityRanging/Commands.ipp>
-#include <clusters/ProximityRanging/Events.ipp>
-#include <clusters/ProximityRanging/Structs.ipp>
-#include <clusters/NetworkIdentityManagement/Attributes.ipp>
-#include <clusters/NetworkIdentityManagement/Commands.ipp>
-#include <clusters/NetworkIdentityManagement/Events.ipp>
-#include <clusters/NetworkIdentityManagement/Structs.ipp>
 #include <clusters/WiFiNetworkManagement/Attributes.ipp>
 #include <clusters/WiFiNetworkManagement/Commands.ipp>
 #include <clusters/WiFiNetworkManagement/Events.ipp>
@@ -677,17 +661,6 @@ bool CommandNeedsTimedInvoke(ClusterId aCluster, CommandId aCommand)
           switch (aCommand) {
           case Clusters::ClosureDimension::Commands::SetTarget::Id:
           case Clusters::ClosureDimension::Commands::Step::Id:
-              return true;
-          default:
-              return false;
-          }
-      }
-      case Clusters::NetworkIdentityManagement::Id:
-      {
-          switch (aCommand) {
-          case Clusters::NetworkIdentityManagement::Commands::AddClient::Id:
-          case Clusters::NetworkIdentityManagement::Commands::RemoveClient::Id:
-          case Clusters::NetworkIdentityManagement::Commands::ImportAdminSecret::Id:
               return true;
           default:
               return false;
@@ -1095,9 +1068,9 @@ bool CommandIsFabricScoped(ClusterId aCluster, CommandId aCommand)
               return true;
           case Clusters::Groupcast::Commands::UpdateGroupKey::Id:
               return true;
-          case Clusters::Groupcast::Commands::ConfigureAuxiliaryACL::Id:
+          case Clusters::Groupcast::Commands::ExpireGracePeriod::Id:
               return true;
-          case Clusters::Groupcast::Commands::GroupcastTesting::Id:
+          case Clusters::Groupcast::Commands::ConfigureAuxiliaryACL::Id:
               return true;
           default:
               return false;
@@ -1247,28 +1220,7 @@ bool CommandIsFabricScoped(ClusterId aCluster, CommandId aCommand)
               return false;
           }
       }
-      case Clusters::Humidistat::Id:
-      {
-          switch (aCommand) {
-          default:
-              return false;
-          }
-      }
       case Clusters::ColorControl::Id:
-      {
-          switch (aCommand) {
-          default:
-              return false;
-          }
-      }
-      case Clusters::ProximityRanging::Id:
-      {
-          switch (aCommand) {
-          default:
-              return false;
-          }
-      }
-      case Clusters::NetworkIdentityManagement::Id:
       {
           switch (aCommand) {
           default:

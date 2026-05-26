@@ -1,9 +1,9 @@
 /***************************************************************************//**
  * @file
- * @brief PWM Driver Instances
+ * @brief PWM Driver
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -28,26 +28,58 @@
  *
  ******************************************************************************/
 
-#ifndef SL_PWM_INSTANCES_H
-#define SL_PWM_INSTANCES_H
+#ifndef SL_PWM_INIT_PWM2_CONFIG_H
+#define SL_PWM_INIT_PWM2_CONFIG_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "sl_pwm.h"
+// <<< Use Configuration Wizard in Context Menu >>>
 
+// <h>PWM configuration
 
-extern sl_pwm_instance_t sl_pwm_pwm0;
-extern sl_pwm_instance_t sl_pwm_pwm1;
-extern sl_pwm_instance_t sl_pwm_pwm2;
-extern sl_pwm_instance_t sl_pwm_pwm3;
-extern sl_pwm_instance_t sl_pwm_pwm4;
+// <o SL_PWM_PWM2_FREQUENCY> PWM frequency [Hz]
+// <i> Default: 10000
+#define SL_PWM_PWM2_FREQUENCY       1000
 
-void sl_pwm_init_instances(void);
+// <o SL_PWM_PWM2_POLARITY> Polarity
+// <PWM_ACTIVE_HIGH=> Active high
+// <PWM_ACTIVE_LOW=> Active low
+// <i> Default: PWM_ACTIVE_HIGH
+#define SL_PWM_PWM2_POLARITY        PWM_ACTIVE_HIGH
+// </h> end pwm configuration
+
+// <<< end of configuration section >>>
+
+// <<< sl:start pin_tool >>>
+
+// <timer channel=OUTPUT> SL_PWM_PWM2
+// $[TIMER_SL_PWM_PWM2]
+#ifndef SL_PWM_PWM2_PERIPHERAL                  
+#define SL_PWM_PWM2_PERIPHERAL                   TIMER2
+#endif
+#ifndef SL_PWM_PWM2_PERIPHERAL_NO               
+#define SL_PWM_PWM2_PERIPHERAL_NO                2
+#endif
+
+#ifndef SL_PWM_PWM2_OUTPUT_CHANNEL              
+#define SL_PWM_PWM2_OUTPUT_CHANNEL               0
+#endif
+// TIMER2 CC0 on PA02
+#ifndef SL_PWM_PWM2_OUTPUT_PORT                 
+#define SL_PWM_PWM2_OUTPUT_PORT                  SL_GPIO_PORT_A
+#endif
+#ifndef SL_PWM_PWM2_OUTPUT_PIN                  
+#define SL_PWM_PWM2_OUTPUT_PIN                   2
+#endif
+// [TIMER_SL_PWM_PWM2]$
+
+// <<< sl:end pin_tool >>>
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // SL_PWM_INSTANCES_H
+#endif // SL_PWM_INIT_PWM2_CONFIG_H
+

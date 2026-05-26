@@ -69,8 +69,6 @@ namespace detail {
 
 
 
-
-
 // Enum for ChangeIndicationEnum
 enum class ChangeIndicationEnum : uint8_t {
 kOk = 0x00,
@@ -127,11 +125,6 @@ kDown = 0x01,
 // enum value. This specific should never be transmitted.
 kUnknownEnumValue = 2,
 };
-
-
-
-
-
 
 
 
@@ -312,9 +305,6 @@ kUnknownEnumValue = 8,
 
 
 
-
-
-
 // Enum for ProductIdentifierTypeEnum
 enum class ProductIdentifierTypeEnum : uint8_t {
 kUpc = 0x00,
@@ -408,21 +398,7 @@ kUnknownEnumValue = 5,
 
 
 
-
-
-
-
-
-
-
-
 // Bitmaps shared across multiple clusters.
-
-
-
-
-
-
 
 
 
@@ -825,13 +801,6 @@ kUnknownEnumValue = 3,
 
 
 
-
-
-
-
-
-
-
 // Enum for LandmarkTag
 enum class LandmarkTag : uint8_t {
 kAirConditioner = 0x00,
@@ -985,9 +954,6 @@ kUnknownEnumValue = 18,
 
 
 
-
-
-
 // Enum for PositionTag
 enum class PositionTag : uint8_t {
 kLeft = 0x00,
@@ -1027,11 +993,6 @@ kUnknownEnumValue = 3,
 
 
 
-
-
-
-
-
 // Enum for RelativePositionTag
 enum class RelativePositionTag : uint8_t {
 kUnder = 0x00,
@@ -1057,21 +1018,6 @@ kUnknownEnumValue = 7,
 
 
 
-
-
-
-// Enum for SoftwareVersionCertificationStatusEnum
-enum class SoftwareVersionCertificationStatusEnum : uint8_t {
-kDevTest = 0x00,
-kProvisional = 0x01,
-kCertified = 0x02,
-kRevoked = 0x03,
-// All received enum values that are not listed above will be mapped
-// to kUnknownEnumValue. This is a helper enum value that should only
-// be used by code to process how it handles receiving and unknown
-// enum value. This specific should never be transmitted.
-kUnknownEnumValue = 4,
-};
 
 
 
@@ -1112,7 +1058,6 @@ kLiveView = 0x03,
 // enum value. This specific should never be transmitted.
 kUnknownEnumValue = 4,
 };
-
 
 
 
@@ -1226,12 +1171,6 @@ kUnknownEnumValue = 13,
 
 
 // Global bitmaps.
-
-
-
-
-
-
 
 
 

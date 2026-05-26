@@ -107,7 +107,6 @@
 #include <clusters/Thermostat/CommandIds.h>
 #include <clusters/FanControl/CommandIds.h>
 #include <clusters/ThermostatUserInterfaceConfiguration/CommandIds.h>
-#include <clusters/Humidistat/CommandIds.h>
 #include <clusters/ColorControl/CommandIds.h>
 #include <clusters/BallastConfiguration/CommandIds.h>
 #include <clusters/IlluminanceMeasurement/CommandIds.h>
@@ -127,9 +126,6 @@
 #include <clusters/TotalVolatileOrganicCompoundsConcentrationMeasurement/CommandIds.h>
 #include <clusters/RadonConcentrationMeasurement/CommandIds.h>
 #include <clusters/SoilMeasurement/CommandIds.h>
-#include <clusters/AmbientContextSensing/CommandIds.h>
-#include <clusters/ProximityRanging/CommandIds.h>
-#include <clusters/NetworkIdentityManagement/CommandIds.h>
 #include <clusters/WiFiNetworkManagement/CommandIds.h>
 #include <clusters/ThreadBorderRouterManagement/CommandIds.h>
 #include <clusters/ThreadNetworkDirectory/CommandIds.h>

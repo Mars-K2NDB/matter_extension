@@ -34,6 +34,12 @@
 
 #include "sl_pwm_init_pwm1_config.h"
 
+#include "sl_pwm_init_pwm2_config.h"
+
+#include "sl_pwm_init_pwm3_config.h"
+
+#include "sl_pwm_init_pwm4_config.h"
+
 
 #include "sl_gpio.h"
 
@@ -58,6 +64,36 @@ sl_pwm_instance_t sl_pwm_pwm1 = {
 #endif
 };
 
+sl_pwm_instance_t sl_pwm_pwm2 = {
+  .timer = SL_PWM_PWM2_PERIPHERAL,
+  .channel = (uint8_t)(SL_PWM_PWM2_OUTPUT_CHANNEL),
+  .port = (uint8_t)(SL_PWM_PWM2_OUTPUT_PORT),
+  .pin = (uint8_t)(SL_PWM_PWM2_OUTPUT_PIN),
+#if defined(SL_PWM_PWM2_OUTPUT_LOC)
+  .location = (uint8_t)(SL_PWM_PWM2_OUTPUT_LOC),
+#endif
+};
+
+sl_pwm_instance_t sl_pwm_pwm3 = {
+  .timer = SL_PWM_PWM3_PERIPHERAL,
+  .channel = (uint8_t)(SL_PWM_PWM3_OUTPUT_CHANNEL),
+  .port = (uint8_t)(SL_PWM_PWM3_OUTPUT_PORT),
+  .pin = (uint8_t)(SL_PWM_PWM3_OUTPUT_PIN),
+#if defined(SL_PWM_PWM3_OUTPUT_LOC)
+  .location = (uint8_t)(SL_PWM_PWM3_OUTPUT_LOC),
+#endif
+};
+
+sl_pwm_instance_t sl_pwm_pwm4 = {
+  .timer = SL_PWM_PWM4_PERIPHERAL,
+  .channel = (uint8_t)(SL_PWM_PWM4_OUTPUT_CHANNEL),
+  .port = (uint8_t)(SL_PWM_PWM4_OUTPUT_PORT),
+  .pin = (uint8_t)(SL_PWM_PWM4_OUTPUT_PIN),
+#if defined(SL_PWM_PWM4_OUTPUT_LOC)
+  .location = (uint8_t)(SL_PWM_PWM4_OUTPUT_LOC),
+#endif
+};
+
 
 void sl_pwm_init_instances(void)
 {
@@ -75,5 +111,26 @@ void sl_pwm_init_instances(void)
   };
 
   sl_pwm_init(&sl_pwm_pwm1, &pwm_pwm1_config);
+
+  sl_pwm_config_t pwm_pwm2_config = {
+    .frequency = SL_PWM_PWM2_FREQUENCY,
+    .polarity = SL_PWM_PWM2_POLARITY,
+  };
+
+  sl_pwm_init(&sl_pwm_pwm2, &pwm_pwm2_config);
+
+  sl_pwm_config_t pwm_pwm3_config = {
+    .frequency = SL_PWM_PWM3_FREQUENCY,
+    .polarity = SL_PWM_PWM3_POLARITY,
+  };
+
+  sl_pwm_init(&sl_pwm_pwm3, &pwm_pwm3_config);
+
+  sl_pwm_config_t pwm_pwm4_config = {
+    .frequency = SL_PWM_PWM4_FREQUENCY,
+    .polarity = SL_PWM_PWM4_POLARITY,
+  };
+
+  sl_pwm_init(&sl_pwm_pwm4, &pwm_pwm4_config);
 
 }

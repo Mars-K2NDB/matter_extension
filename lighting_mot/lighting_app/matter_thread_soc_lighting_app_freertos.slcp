@@ -194,6 +194,9 @@ component:
   instance:
   - pwm0
   - pwm1
+  - pwm2
+  - pwm3
+  - pwm4
   vendor: silabs
   id: pwm
 - package: simplicity_sdk

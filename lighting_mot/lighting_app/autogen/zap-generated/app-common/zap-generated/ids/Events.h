@@ -107,7 +107,6 @@
 #include <clusters/Thermostat/EventIds.h>
 #include <clusters/FanControl/EventIds.h>
 #include <clusters/ThermostatUserInterfaceConfiguration/EventIds.h>
-#include <clusters/Humidistat/EventIds.h>
 #include <clusters/ColorControl/EventIds.h>
 #include <clusters/BallastConfiguration/EventIds.h>
 #include <clusters/IlluminanceMeasurement/EventIds.h>
@@ -127,9 +126,6 @@
 #include <clusters/TotalVolatileOrganicCompoundsConcentrationMeasurement/EventIds.h>
 #include <clusters/RadonConcentrationMeasurement/EventIds.h>
 #include <clusters/SoilMeasurement/EventIds.h>
-#include <clusters/AmbientContextSensing/EventIds.h>
-#include <clusters/ProximityRanging/EventIds.h>
-#include <clusters/NetworkIdentityManagement/EventIds.h>
 #include <clusters/WiFiNetworkManagement/EventIds.h>
 #include <clusters/ThreadBorderRouterManagement/EventIds.h>
 #include <clusters/ThreadNetworkDirectory/EventIds.h>

@@ -109,7 +109,6 @@
 #include <clusters/Thermostat/Enums.h>
 #include <clusters/FanControl/Enums.h>
 #include <clusters/ThermostatUserInterfaceConfiguration/Enums.h>
-#include <clusters/Humidistat/Enums.h>
 #include <clusters/ColorControl/Enums.h>
 #include <clusters/BallastConfiguration/Enums.h>
 #include <clusters/IlluminanceMeasurement/Enums.h>
@@ -129,9 +128,6 @@
 #include <clusters/TotalVolatileOrganicCompoundsConcentrationMeasurement/Enums.h>
 #include <clusters/RadonConcentrationMeasurement/Enums.h>
 #include <clusters/SoilMeasurement/Enums.h>
-#include <clusters/AmbientContextSensing/Enums.h>
-#include <clusters/ProximityRanging/Enums.h>
-#include <clusters/NetworkIdentityManagement/Enums.h>
 #include <clusters/WiFiNetworkManagement/Enums.h>
 #include <clusters/ThreadBorderRouterManagement/Enums.h>
 #include <clusters/ThreadNetworkDirectory/Enums.h>

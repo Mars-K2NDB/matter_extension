@@ -93,12 +93,36 @@
 // [TIMER1]$
 
 // $[TIMER2]
+// TIMER2 CC0 on PA02
+#ifndef TIMER2_CC0_PORT                         
+#define TIMER2_CC0_PORT                          SL_GPIO_PORT_A
+#endif
+#ifndef TIMER2_CC0_PIN                          
+#define TIMER2_CC0_PIN                           2
+#endif
+
 // [TIMER2]$
 
 // $[TIMER3]
+// TIMER3 CC0 on PC03
+#ifndef TIMER3_CC0_PORT                         
+#define TIMER3_CC0_PORT                          SL_GPIO_PORT_C
+#endif
+#ifndef TIMER3_CC0_PIN                          
+#define TIMER3_CC0_PIN                           3
+#endif
+
 // [TIMER3]$
 
 // $[TIMER4]
+// TIMER4 CC0 on PB01
+#ifndef TIMER4_CC0_PORT                         
+#define TIMER4_CC0_PORT                          SL_GPIO_PORT_B
+#endif
+#ifndef TIMER4_CC0_PIN                          
+#define TIMER4_CC0_PIN                           1
+#endif
+
 // [TIMER4]$
 
 // $[USART0]
