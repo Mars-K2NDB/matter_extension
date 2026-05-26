@@ -28,6 +28,7 @@ slc/tools/
 **/artifact/
 **/.ninja_log
 **/.projectlinkstore
+**/.uceditor/
 
 # Pigweed Environment
 .environment/
