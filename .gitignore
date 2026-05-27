@@ -29,6 +29,7 @@ slc/tools/
 **/.ninja_log
 **/.projectlinkstore
 **/.uceditor/
+**/.slc_state/
 
 # Pigweed Environment
 .environment/

@@ -1,0 +1,17 @@
+---
+workspace_name: "matter_thread_soc_extended_color_light_app_series_2_internal_freertos"
+label: "Matter Thread - SoC Extended Color Light with internal Bootloader FreeRTOS"
+quality: "production"
+package: "matter"
+description: "Demonstrates a sample implementation of a Matter over Thread extended color light\
+  \ app with internal bootloader"
+project:
+- id: "application"
+  path: "extended_color_light_app/matter_thread_soc_extended_color_light_app_freertos.slcp"
+  output: "extended_color_light_app"
+- id: "bootloader"
+  path: "matter_bootloader/matter_bootloader_internal_series_2.slcp"
+  output: "matter_bootloader"
+post_build:
+  profile: ""
+  path: "matter_thread_soc_extended_color_light_app_series_2_internal_freertos.slpb"
