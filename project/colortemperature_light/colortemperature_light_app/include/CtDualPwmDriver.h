@@ -90,6 +90,9 @@ private:
     static bool sPreFaultOn;
     static uint8_t sPreFaultLevel;
     static uint16_t sPreFaultCtMireds;
+    static bool sLastOnValid;
+    static uint8_t sLastOnLevel;
+    static uint16_t sLastOnCtMireds;
 
     static uint8_t sDisplayCoolDuty;
     static uint8_t sDisplayWarmDuty;

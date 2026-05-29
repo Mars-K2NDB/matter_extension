@@ -4,6 +4,7 @@
 
 #include "CustomerAppTask.h"
 
+#include "adc_protect_config.h"
 #include "AppConfig.h"
 #include "DeviceUserFlash.h"
 #include "LightOutput.h"
@@ -86,10 +87,12 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     ReturnErrorOnFailure(AppTask::InitLight());
 
     LightOutput::Init();
-    VoltageAdcDriver::Init();
     OvercurrentProtector::Init();
     ShortCircuitProtector::Init();
+#if DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
+    VoltageAdcDriver::Init();
     VoltageAdcDriver::StartPeriodicSampling();
+#endif
 
     PlatformMgr().LockChipStack();
     DeviceUserFlash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);

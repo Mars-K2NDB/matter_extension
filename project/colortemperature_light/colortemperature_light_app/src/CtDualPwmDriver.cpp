@@ -39,6 +39,9 @@ bool CtDualPwmDriver::sPreFaultSaved     = false;
 bool CtDualPwmDriver::sPreFaultOn        = false;
 uint8_t CtDualPwmDriver::sPreFaultLevel    = 254;
 uint16_t CtDualPwmDriver::sPreFaultCtMireds = kDefaultCtMireds;
+bool CtDualPwmDriver::sLastOnValid       = false;
+uint8_t CtDualPwmDriver::sLastOnLevel     = 254;
+uint16_t CtDualPwmDriver::sLastOnCtMireds = kDefaultCtMireds;
 
 uint8_t CtDualPwmDriver::sDisplayCoolDuty     = 0;
 uint8_t CtDualPwmDriver::sDisplayWarmDuty     = 0;
@@ -548,10 +551,27 @@ void CtDualPwmDriver::SetOn(bool on)
         return;
     }
 
+    if (!on && sOn)
+    {
+        sLastOnValid    = true;
+        sLastOnLevel    = sLevel;
+        sLastOnCtMireds = sCtMireds;
+    }
+
+    if (on && !sOn && sLastOnValid)
+    {
+        sLevel    = sLastOnLevel;
+        sCtMireds = sLastOnCtMireds;
+    }
+
     sOn = on;
     if (on && sLevel <= 1)
     {
         sLevel = 254;
+        if (sLastOnValid)
+        {
+            sLastOnLevel = sLevel;
+        }
     }
     ScheduleFade(FadeKind::kOnOff, true);
     ChipLogProgress(Zcl, "CtPwm On -> %u (ct=%u level=%u)", on, sCtMireds, sLevel);
@@ -560,6 +580,11 @@ void CtDualPwmDriver::SetOn(bool on)
 void CtDualPwmDriver::SetLevel(uint8_t level)
 {
     sLevel = level;
+    if (sOn)
+    {
+        sLastOnValid = true;
+        sLastOnLevel = sLevel;
+    }
     if (!sOn)
     {
         return;
@@ -587,6 +612,12 @@ void CtDualPwmDriver::ApplyClusterLevel(chip::EndpointId endpoint, uint8_t clust
 void CtDualPwmDriver::SetColorTemperatureMireds(uint16_t mireds)
 {
     sCtMireds = std::clamp(mireds, kCtMinMireds, kCtMaxMireds);
+    if (sOn)
+    {
+        sLastOnValid    = true;
+        sLastOnLevel    = sLevel;
+        sLastOnCtMireds = sCtMireds;
+    }
     if (!sOn)
     {
         return;
@@ -672,6 +703,12 @@ void CtDualPwmDriver::RefreshFromMatterEndpoint(chip::EndpointId endpoint)
     sOn       = on;
     sLevel    = level;
     sCtMireds = ctMireds;
+    if (sOn)
+    {
+        sLastOnValid    = true;
+        sLastOnLevel    = sLevel;
+        sLastOnCtMireds = sCtMireds;
+    }
 
     ApplyOutputImmediate();
 

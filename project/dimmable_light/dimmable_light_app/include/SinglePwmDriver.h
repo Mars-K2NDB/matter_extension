@@ -7,6 +7,12 @@
 #include <cstdint>
 #include <lib/core/DataModelTypes.h>
 
+namespace chip {
+namespace System {
+class Layer;
+} // namespace System
+} // namespace chip
+
 class SinglePwmDriver
 {
 public:
@@ -26,6 +32,10 @@ private:
     static void SaveStateBeforeFault();
     static void PwmOutputKillRegisters();
     static void PwmOutputRestoreRegisters();
+    static void CancelFadeTimer();
+    static void ScheduleFade(bool restartFade);
+    static void ApplyFadeFrame(uint16_t step);
+    static void OnFadeTimer(chip::System::Layer * layer, void * appState);
     static void ApplyOutputImmediate();
     static uint8_t LevelToBrightnessPercent(uint8_t level);
 
@@ -36,4 +46,10 @@ private:
     static bool sPreFaultSaved;
     static bool sPreFaultOn;
     static uint8_t sPreFaultLevel;
+    static uint8_t sDisplayDuty;
+    static uint8_t sFadeStartDuty;
+    static uint8_t sFadeTargetDuty;
+    static uint16_t sFadeStep;
+    static uint16_t sFadeStepsTotal;
+    static bool sFadeActive;
 };

@@ -4,6 +4,7 @@
 
 #include "VoltageAdcDriver.h"
 
+#include "adc_protect_config.h"
 #include "overcurrent_protect_config.h"
 #include "OvercurrentProtector.h"
 #include "pin_config.h"
@@ -188,6 +189,10 @@ bool WaitScanDataValid()
 
 void VoltageAdcDriver::Init()
 {
+#if !DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
+    return;
+#endif
+
     if (sInitialized)
     {
         return;
@@ -294,6 +299,10 @@ void VoltageAdcDriver::OnPeriodicSampleTimer(chip::System::Layer * layer, void *
     (void) layer;
     (void) appState;
 
+#if !DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
+    return;
+#endif
+
     if (!sInitialized || !sPeriodicActive)
     {
         return;
@@ -312,6 +321,10 @@ void VoltageAdcDriver::OnPeriodicSampleTimer(chip::System::Layer * layer, void *
 
 void VoltageAdcDriver::StartPeriodicSampling()
 {
+#if !DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
+    return;
+#endif
+
     if (!sInitialized || sPeriodicActive)
     {
         return;

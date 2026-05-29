@@ -7,6 +7,12 @@
 #include <cstdint>
 #include <lib/core/DataModelTypes.h>
 
+namespace chip {
+namespace System {
+class Layer;
+} // namespace System
+} // namespace chip
+
 class RgbcwPwmDriver
 {
 public:
@@ -29,25 +35,79 @@ public:
     static uint8_t ResolveLevelForPwmLocked(chip::EndpointId endpoint, bool on, uint8_t clusterLevel);
 
 private:
+    struct LightState
+    {
+        bool on             = false;
+        uint8_t level       = 254;
+        uint8_t hue         = 0;
+        uint8_t saturation  = 0;
+        uint16_t ctMireds   = kDefaultCtMireds;
+        bool useCt          = false;
+    };
+
+    struct RuntimeState
+    {
+        LightState light;
+        bool pwmStarted     = false;
+        bool routeDisabled  = false;
+    };
+
+    struct FaultSnapshot
+    {
+        bool saved = false;
+        LightState light;
+    };
+
+    struct LastOnSnapshot
+    {
+        bool valid = false;
+        LightState light;
+    };
+
+    struct OutputFrame
+    {
+        uint8_t r    = 0;
+        uint8_t g    = 0;
+        uint8_t b    = 0;
+        uint8_t cool = 0;
+        uint8_t warm = 0;
+    };
+
+    enum class FadeKind : uint8_t
+    {
+        kOnOff = 0,
+        kLevel = 1,
+        kColor = 2,
+    };
+
+    struct FadeState
+    {
+        OutputFrame start;
+        OutputFrame target;
+        FadeKind kind       = FadeKind::kOnOff;
+        uint16_t step       = 0;
+        uint16_t stepsTotal = 0;
+        bool active         = false;
+    };
+
     static void SaveStateBeforeFault();
     static void PwmOutputKillRegisters();
     static void PwmOutputRestoreRegisters();
+    static void CancelFadeTimer();
+    static void ScheduleFade(FadeKind kind, bool restartFade);
+    static void ApplyFadeFrame(uint16_t step);
+    static void OnFadeTimer(chip::System::Layer * layer, void * appState);
+    static void ComputeTargetDuties(uint8_t & r, uint8_t & g, uint8_t & b, uint8_t & cool, uint8_t & warm);
+    static void ApplyDisplayDuties(uint8_t r, uint8_t g, uint8_t b, uint8_t cool, uint8_t warm);
+    static void CaptureLastOnState();
+    static void RestoreLastOnStateIfNeeded();
+    static void SyncLastOnStateIfOn();
     static void ApplyOutputImmediate();
     static uint8_t LevelToBrightnessPercent(uint8_t level);
 
-    static bool sOn;
-    static uint8_t sLevel;
-    static uint8_t sHue;
-    static uint8_t sSat;
-    static uint16_t sCtMireds;
-    static bool sUseCt;
-    static bool sPwmStarted;
-    static bool sRouteDisabled;
-    static bool sPreFaultSaved;
-    static bool sPreFaultOn;
-    static uint8_t sPreFaultLevel;
-    static uint16_t sPreFaultCtMireds;
-    static bool sPreFaultUseCt;
-    static uint8_t sPreFaultHue;
-    static uint8_t sPreFaultSat;
+    static RuntimeState sRuntime;
+    static FaultSnapshot sFault;
+    static LastOnSnapshot sLastOn;
+    static OutputFrame sDisplay;
+    static FadeState sFade;
 };

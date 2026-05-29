@@ -4,6 +4,7 @@
 
 #include "OvercurrentProtector.h"
 
+#include "adc_protect_config.h"
 #include "AppConfig.h"
 #include "LightOutput.h"
 #include "overcurrent_protect_config.h"
@@ -24,6 +25,7 @@
 
 #include <em_gpio.h>
 #include <sl_gpio.h>
+#include <system/SystemClock.h>
 
 using namespace chip;
 using namespace chip::app;
@@ -41,6 +43,10 @@ uint32_t OvercurrentProtector::sRecoveryMs   = 0;
 uint32_t OvercurrentProtector::sSampleRing[OVERCURRENT_AVG_SAMPLES] = {};
 uint8_t OvercurrentProtector::sSampleCount = 0;
 uint8_t OvercurrentProtector::sSampleIndex = 0;
+
+#if !DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
+bool OvercurrentProtector::sPollActive = false;
+#endif
 
 namespace {
 
@@ -105,6 +111,10 @@ void OvercurrentProtector::Init()
     sRecoveryMs        = 0;
     sSampleCount       = 0;
     sSampleIndex       = 0;
+
+#if !DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
+    StartProtectionPoll();
+#endif
 }
 
 void OvercurrentProtector::SavePreFaultSnapshot()
@@ -185,11 +195,15 @@ bool OvercurrentProtector::IsGpioOk()
         return false;
     }
 
+#if DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
 #if defined(OVERCURRENT_GPIO_OK_PORT) && defined(OVERCURRENT_GPIO_OK_PIN)
     const unsigned int level = GPIO_PinInGet(GpioOkPort(), OVERCURRENT_GPIO_OK_PIN);
     return level == OVERCURRENT_GPIO_OK_LEVEL;
 #else
     return VoltageAdcDriver::IsInitialized();
+#endif
+#else
+    return true;
 #endif
 }
 
@@ -280,9 +294,66 @@ void OvercurrentProtector::Recover()
                     static_cast<unsigned long>(sAvgMillivolts));
 }
 
+#if !DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
+void OvercurrentProtector::OnProtectionPollTimer(System::Layer * layer, void * appState)
+{
+    (void) layer;
+    (void) appState;
+
+    if (!sPollActive)
+    {
+        return;
+    }
+
+    OnProtectionPoll();
+
+    if (sPollActive)
+    {
+        (void) DeviceLayer::SystemLayer().StartTimer(System::Clock::Milliseconds32(OVERCURRENT_SAMPLE_MS),
+                                                    OnProtectionPollTimer, nullptr);
+    }
+}
+
+void OvercurrentProtector::StartProtectionPoll()
+{
+    PlatformMgr().LockChipStack();
+    sPollActive = true;
+    (void) DeviceLayer::SystemLayer().StartTimer(System::Clock::Milliseconds32(OVERCURRENT_SAMPLE_MS),
+                                                 OnProtectionPollTimer, nullptr);
+    PlatformMgr().UnlockChipStack();
+}
+
+void OvercurrentProtector::OnProtectionPoll()
+{
+    ProcessDeferredTrip();
+
+    if (!sFaultActive)
+    {
+        return;
+    }
+
+    if (ShortCircuitProtector::IsPinOk())
+    {
+        sRecoveryMs += OVERCURRENT_SAMPLE_MS;
+        if (sRecoveryMs >= OVERCURRENT_RECOVERY_MS)
+        {
+            Recover();
+        }
+    }
+    else
+    {
+        sRecoveryMs = 0;
+    }
+}
+#endif
+
 void OvercurrentProtector::OnAdcSample(uint32_t millivolts, bool sampleValid)
 {
     ProcessDeferredTrip();
+
+#if !DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
+    return;
+#endif
 
     if (!sampleValid)
     {

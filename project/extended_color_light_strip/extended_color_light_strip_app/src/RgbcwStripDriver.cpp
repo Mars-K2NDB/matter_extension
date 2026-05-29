@@ -11,6 +11,8 @@
 #include <clusters/OnOff/AttributeIds.h>
 #include <lib/support/logging/CHIPLogging.h>
 #include <platform/CHIPDeviceLayer.h>
+#include <system/SystemClock.h>
+#include <system/SystemLayer.h>
 
 #include <algorithm>
 
@@ -24,8 +26,39 @@ bool RgbcwStripDriver::sPreFaultSaved = false;
 bool RgbcwStripDriver::sPreFaultOn    = false;
 uint8_t RgbcwStripDriver::sPreFaultLevel = 254;
 uint16_t RgbcwStripDriver::sPreFaultCtMireds = kDefaultCtMireds;
+bool RgbcwStripDriver::sLastOnValid      = false;
+uint8_t RgbcwStripDriver::sLastOnLevel   = 254;
+uint16_t RgbcwStripDriver::sLastOnCtMireds = kDefaultCtMireds;
+bool RgbcwStripDriver::sLastOnUseCt      = false;
+uint8_t RgbcwStripDriver::sLastOnHue     = 0;
+uint8_t RgbcwStripDriver::sLastOnSat     = 0;
+uint8_t RgbcwStripDriver::sDisplayR    = 0;
+uint8_t RgbcwStripDriver::sDisplayG    = 0;
+uint8_t RgbcwStripDriver::sDisplayB    = 0;
+uint8_t RgbcwStripDriver::sDisplayC    = 0;
+uint8_t RgbcwStripDriver::sDisplayW    = 0;
+uint8_t RgbcwStripDriver::sFadeStartR  = 0;
+uint8_t RgbcwStripDriver::sFadeStartG  = 0;
+uint8_t RgbcwStripDriver::sFadeStartB  = 0;
+uint8_t RgbcwStripDriver::sFadeStartC  = 0;
+uint8_t RgbcwStripDriver::sFadeStartW  = 0;
+uint8_t RgbcwStripDriver::sFadeTargetR = 0;
+uint8_t RgbcwStripDriver::sFadeTargetG = 0;
+uint8_t RgbcwStripDriver::sFadeTargetB = 0;
+uint8_t RgbcwStripDriver::sFadeTargetC = 0;
+uint8_t RgbcwStripDriver::sFadeTargetW = 0;
+RgbcwStripDriver::FadeKind RgbcwStripDriver::sFadeKind = FadeKind::kOnOff;
+uint16_t RgbcwStripDriver::sFadeStep      = 0;
+uint16_t RgbcwStripDriver::sFadeStepsTotal = 0;
+bool RgbcwStripDriver::sFadeActive        = false;
 
 namespace {
+constexpr uint32_t kFadeTickMs          = 10;
+constexpr uint16_t kFadeDurationOnMs    = 500;
+constexpr uint16_t kFadeDurationOffMs   = 350;
+constexpr uint16_t kFadeDurationLevelMs = 320;
+constexpr uint16_t kFadeDurationColorMs = 650;
+constexpr uint32_t kFadeFpOne = 65535U;
 
 // TODO: 配置 SPI 外设与数据线引脚，实现 GRBW/RGBCW 帧发送。
 void SpiStripWrite(uint8_t r, uint8_t g, uint8_t b, uint8_t c, uint8_t w)
@@ -107,6 +140,30 @@ void CtToCoolWarm(uint16_t mireds, uint8_t brightness, uint8_t & cool, uint8_t &
     cool = brightness - warm;
 }
 
+uint32_t SmoothstepT(uint16_t step, uint16_t total)
+{
+    if (total == 0 || step >= total)
+    {
+        return kFadeFpOne;
+    }
+
+    const uint32_t t = (static_cast<uint32_t>(step) * kFadeFpOne) / total;
+    const uint32_t t2 = (t * t) / kFadeFpOne;
+    return (t2 * (3U * kFadeFpOne - 2U * t)) / kFadeFpOne;
+}
+
+uint8_t InterpolateDuty(uint8_t from, uint8_t to, uint16_t step, uint16_t total)
+{
+    if (total == 0 || step >= total)
+    {
+        return to;
+    }
+
+    const uint32_t t = SmoothstepT(step, total);
+    const int32_t delta = static_cast<int32_t>(to) - static_cast<int32_t>(from);
+    return static_cast<uint8_t>(static_cast<int32_t>(from) + (delta * static_cast<int32_t>(t)) / static_cast<int32_t>(kFadeFpOne));
+}
+
 } // namespace
 
 void RgbcwStripDriver::Init()
@@ -126,40 +183,211 @@ uint8_t RgbcwStripDriver::LevelToBrightnessPercent(uint8_t level)
 
 void RgbcwStripDriver::ApplyOutputImmediate()
 {
+    CancelFadeTimer();
+
+    uint8_t r = 0;
+    uint8_t g = 0;
+    uint8_t b = 0;
+    uint8_t c = 0;
+    uint8_t w = 0;
+    ComputeTargetOutput(r, g, b, c, w);
+    ApplyDisplayOutput(r, g, b, c, w);
+}
+
+void RgbcwStripDriver::ComputeTargetOutput(uint8_t & r, uint8_t & g, uint8_t & b, uint8_t & c, uint8_t & w)
+{
+    r = 0;
+    g = 0;
+    b = 0;
+    c = 0;
+    w = 0;
+
     if (!sOn)
     {
-        SpiStripWrite(0, 0, 0, 0, 0);
         return;
     }
 
     const uint8_t br = LevelToBrightnessPercent(sLevel);
     if (sUseCt)
     {
-        uint8_t cool = 0;
-        uint8_t warm = 0;
-        CtToCoolWarm(sCtMireds, br, cool, warm);
-        SpiStripWrite(0, 0, 0, cool, warm);
+        CtToCoolWarm(sCtMireds, br, c, w);
     }
     else
     {
-        uint8_t r = 0;
-        uint8_t g = 0;
-        uint8_t b = 0;
         HsvToRgb(sHue, sSat, br, r, g, b);
-        SpiStripWrite(r, g, b, 0, 0);
     }
+}
+
+void RgbcwStripDriver::ApplyDisplayOutput(uint8_t r, uint8_t g, uint8_t b, uint8_t c, uint8_t w)
+{
+    SpiStripWrite(r, g, b, c, w);
+    sDisplayR = r;
+    sDisplayG = g;
+    sDisplayB = b;
+    sDisplayC = c;
+    sDisplayW = w;
+}
+
+void RgbcwStripDriver::CancelFadeTimer()
+{
+    if (!sFadeActive)
+    {
+        return;
+    }
+
+    chip::DeviceLayer::PlatformMgr().LockChipStack();
+    chip::DeviceLayer::SystemLayer().CancelTimer(OnFadeTimer, nullptr);
+    chip::DeviceLayer::PlatformMgr().UnlockChipStack();
+    sFadeActive = false;
+}
+
+void RgbcwStripDriver::ApplyFadeFrame(uint16_t step)
+{
+    ApplyDisplayOutput(InterpolateDuty(sFadeStartR, sFadeTargetR, step, sFadeStepsTotal),
+                       InterpolateDuty(sFadeStartG, sFadeTargetG, step, sFadeStepsTotal),
+                       InterpolateDuty(sFadeStartB, sFadeTargetB, step, sFadeStepsTotal),
+                       InterpolateDuty(sFadeStartC, sFadeTargetC, step, sFadeStepsTotal),
+                       InterpolateDuty(sFadeStartW, sFadeTargetW, step, sFadeStepsTotal));
+}
+
+void RgbcwStripDriver::OnFadeTimer(chip::System::Layer * layer, void * appState)
+{
+    (void) layer;
+    (void) appState;
+
+    if (!sFadeActive)
+    {
+        return;
+    }
+
+    sFadeStep++;
+    if (sFadeStep >= sFadeStepsTotal)
+    {
+        sFadeActive = false;
+        ApplyFadeFrame(sFadeStepsTotal);
+        return;
+    }
+
+    ApplyFadeFrame(sFadeStep);
+    (void) chip::DeviceLayer::SystemLayer().StartTimer(chip::System::Clock::Milliseconds32(kFadeTickMs), OnFadeTimer, nullptr);
+}
+
+void RgbcwStripDriver::ScheduleFade(FadeKind kind, bool restartFade)
+{
+    uint8_t targetR = 0;
+    uint8_t targetG = 0;
+    uint8_t targetB = 0;
+    uint8_t targetC = 0;
+    uint8_t targetW = 0;
+    ComputeTargetOutput(targetR, targetG, targetB, targetC, targetW);
+
+    sFadeTargetR = targetR;
+    sFadeTargetG = targetG;
+    sFadeTargetB = targetB;
+    sFadeTargetC = targetC;
+    sFadeTargetW = targetW;
+
+    if (kind == FadeKind::kColor && sFadeActive && sFadeKind == FadeKind::kColor && !restartFade)
+    {
+        if (sDisplayR == sFadeTargetR && sDisplayG == sFadeTargetG && sDisplayB == sFadeTargetB &&
+            sDisplayC == sFadeTargetC && sDisplayW == sFadeTargetW)
+        {
+            CancelFadeTimer();
+        }
+        return;
+    }
+
+    if (!sFadeActive || restartFade || sFadeKind != kind)
+    {
+        sFadeStartR = sDisplayR;
+        sFadeStartG = sDisplayG;
+        sFadeStartB = sDisplayB;
+        sFadeStartC = sDisplayC;
+        sFadeStartW = sDisplayW;
+    }
+    sFadeKind = kind;
+
+    if (sFadeStartR == sFadeTargetR && sFadeStartG == sFadeTargetG && sFadeStartB == sFadeTargetB &&
+        sFadeStartC == sFadeTargetC && sFadeStartW == sFadeTargetW)
+    {
+        CancelFadeTimer();
+        ApplyFadeFrame(sFadeStepsTotal);
+        return;
+    }
+
+    uint16_t durationMs = kFadeDurationLevelMs;
+    if (kind == FadeKind::kOnOff)
+    {
+        durationMs = sOn ? kFadeDurationOnMs : kFadeDurationOffMs;
+    }
+    else if (kind == FadeKind::kColor)
+    {
+        durationMs = kFadeDurationColorMs;
+    }
+
+    sFadeStep       = 0;
+    sFadeStepsTotal = std::max<uint16_t>(durationMs / static_cast<uint16_t>(kFadeTickMs), 1U);
+
+    CancelFadeTimer();
+    ApplyFadeFrame(0);
+    chip::DeviceLayer::PlatformMgr().LockChipStack();
+    const CHIP_ERROR err =
+        chip::DeviceLayer::SystemLayer().StartTimer(chip::System::Clock::Milliseconds32(kFadeTickMs), OnFadeTimer, nullptr);
+    chip::DeviceLayer::PlatformMgr().UnlockChipStack();
+    if (err != CHIP_NO_ERROR)
+    {
+        ApplyOutputImmediate();
+        return;
+    }
+    sFadeActive = true;
 }
 
 void RgbcwStripDriver::SetOn(bool on)
 {
+    if (!on && sOn)
+    {
+        sLastOnValid    = true;
+        sLastOnLevel    = sLevel;
+        sLastOnCtMireds = sCtMireds;
+        sLastOnUseCt    = sUseCt;
+        sLastOnHue      = sHue;
+        sLastOnSat      = sSat;
+    }
+
+    if (on && !sOn && sLastOnValid)
+    {
+        sLevel    = sLastOnLevel;
+        sCtMireds = sLastOnCtMireds;
+        sUseCt    = sLastOnUseCt;
+        sHue      = sLastOnHue;
+        sSat      = sLastOnSat;
+    }
+
     sOn = on;
-    ApplyOutputImmediate();
+    if (on && sLevel <= 1)
+    {
+        sLevel = 254;
+        if (sLastOnValid)
+        {
+            sLastOnLevel = sLevel;
+        }
+    }
+    ScheduleFade(FadeKind::kOnOff, true);
 }
 
 void RgbcwStripDriver::SetLevel(uint8_t level)
 {
     sLevel = level;
-    ApplyOutputImmediate();
+    if (sOn)
+    {
+        sLastOnValid = true;
+        sLastOnLevel = sLevel;
+    }
+    if (!sOn)
+    {
+        return;
+    }
+    ScheduleFade(FadeKind::kLevel, true);
 }
 
 void RgbcwStripDriver::SetHueSat(uint8_t hue, uint8_t saturation)
@@ -167,14 +395,37 @@ void RgbcwStripDriver::SetHueSat(uint8_t hue, uint8_t saturation)
     sHue   = hue;
     sSat   = saturation;
     sUseCt = false;
-    ApplyOutputImmediate();
+    if (sOn)
+    {
+        sLastOnValid = true;
+        sLastOnLevel = sLevel;
+        sLastOnUseCt = false;
+        sLastOnHue   = sHue;
+        sLastOnSat   = sSat;
+    }
+    if (!sOn)
+    {
+        return;
+    }
+    ScheduleFade(FadeKind::kColor, false);
 }
 
 void RgbcwStripDriver::SetColorTemperatureMireds(uint16_t mireds)
 {
     sCtMireds = std::clamp(mireds, kCtMinMireds, kCtMaxMireds);
     sUseCt    = true;
-    ApplyOutputImmediate();
+    if (sOn)
+    {
+        sLastOnValid    = true;
+        sLastOnLevel    = sLevel;
+        sLastOnUseCt    = true;
+        sLastOnCtMireds = sCtMireds;
+    }
+    if (!sOn)
+    {
+        return;
+    }
+    ScheduleFade(FadeKind::kColor, false);
 }
 
 void RgbcwStripDriver::ApplyClusterLevel(chip::EndpointId endpoint, uint8_t clusterLevel)
@@ -230,17 +481,40 @@ void RgbcwStripDriver::SyncFromMatterEndpoint(chip::EndpointId endpoint)
     sSat   = sat;
     sCtMireds = ct;
     sUseCt = (colorMode == ColorControl::ColorModeEnum::kColorTemperatureMireds);
+    if (sOn)
+    {
+        sLastOnValid    = true;
+        sLastOnLevel    = sLevel;
+        sLastOnCtMireds = sCtMireds;
+        sLastOnUseCt    = sUseCt;
+        sLastOnHue      = sHue;
+        sLastOnSat      = sSat;
+    }
     ApplyOutputImmediate();
 }
 
 void RgbcwStripDriver::ForceOffForFault()
 {
+    CancelFadeTimer();
+    sOn = false;
+    sDisplayR = 0;
+    sDisplayG = 0;
+    sDisplayB = 0;
+    sDisplayC = 0;
+    sDisplayW = 0;
     SpiStripWrite(0, 0, 0, 0, 0);
 }
 
 void RgbcwStripDriver::ForceOffForFaultFromIsr()
 {
-    ForceOffForFault();
+    sOn = false;
+    sFadeActive = false;
+    sDisplayR = 0;
+    sDisplayG = 0;
+    sDisplayB = 0;
+    sDisplayC = 0;
+    sDisplayW = 0;
+    SpiStripWrite(0, 0, 0, 0, 0);
 }
 
 void RgbcwStripDriver::RecoverFromFault()

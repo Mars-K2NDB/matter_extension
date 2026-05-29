@@ -4,9 +4,16 @@
 
 #pragma once
 
+#include "adc_protect_config.h"
 #include "overcurrent_protect_config.h"
 
 #include <cstdint>
+
+namespace chip {
+namespace System {
+class Layer;
+} // namespace System
+} // namespace chip
 
 class OvercurrentProtector
 {
@@ -28,6 +35,13 @@ private:
     static void Recover();
     static void ProcessDeferredTrip();
     static void SavePreFaultSnapshot();
+
+#if !DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
+    static void OnProtectionPoll();
+    static void OnProtectionPollTimer(chip::System::Layer * layer, void * appState);
+    static void StartProtectionPoll();
+    static bool sPollActive;
+#endif
 
     static bool sFaultActive;
     static bool sSnapValid;

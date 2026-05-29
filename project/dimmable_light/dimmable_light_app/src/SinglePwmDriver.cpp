@@ -17,6 +17,10 @@
 #include <clusters/LevelControl/AttributeIds.h>
 #include <lib/support/logging/CHIPLogging.h>
 #include <platform/CHIPDeviceLayer.h>
+#include <system/SystemClock.h>
+#include <system/SystemLayer.h>
+
+#include <algorithm>
 
 bool SinglePwmDriver::sOn              = false;
 uint8_t SinglePwmDriver::sLevel        = 254;
@@ -25,8 +29,44 @@ bool SinglePwmDriver::sRouteDisabled   = false;
 bool SinglePwmDriver::sPreFaultSaved   = false;
 bool SinglePwmDriver::sPreFaultOn      = false;
 uint8_t SinglePwmDriver::sPreFaultLevel = 254;
+uint8_t SinglePwmDriver::sDisplayDuty   = 0;
+uint8_t SinglePwmDriver::sFadeStartDuty = 0;
+uint8_t SinglePwmDriver::sFadeTargetDuty = 0;
+uint16_t SinglePwmDriver::sFadeStep      = 0;
+uint16_t SinglePwmDriver::sFadeStepsTotal = 0;
+bool SinglePwmDriver::sFadeActive        = false;
 
 namespace {
+
+constexpr uint32_t kFadeTickMs         = 10;
+constexpr uint16_t kFadeDurationOnMs   = 450;
+constexpr uint16_t kFadeDurationOffMs  = 350;
+constexpr uint16_t kFadeDurationLevelMs = 300;
+constexpr uint32_t kFadeFpOne = 65535U;
+
+uint32_t SmoothstepT(uint16_t step, uint16_t total)
+{
+    if (total == 0 || step >= total)
+    {
+        return kFadeFpOne;
+    }
+
+    const uint32_t t = (static_cast<uint32_t>(step) * kFadeFpOne) / total;
+    const uint32_t t2 = (t * t) / kFadeFpOne;
+    return (t2 * (3U * kFadeFpOne - 2U * t)) / kFadeFpOne;
+}
+
+uint8_t InterpolateDuty(uint8_t from, uint8_t to, uint16_t step, uint16_t total)
+{
+    if (total == 0 || step >= total)
+    {
+        return to;
+    }
+
+    const uint32_t t = SmoothstepT(step, total);
+    const int32_t delta = static_cast<int32_t>(to) - static_cast<int32_t>(from);
+    return static_cast<uint8_t>(static_cast<int32_t>(from) + (delta * static_cast<int32_t>(t)) / static_cast<int32_t>(kFadeFpOne));
+}
 
 void PwmRouteDisable(const sl_pwm_instance_t & pwm)
 {
@@ -123,6 +163,8 @@ uint8_t SinglePwmDriver::LevelToBrightnessPercent(uint8_t level)
 
 void SinglePwmDriver::ApplyOutputImmediate()
 {
+    CancelFadeTimer();
+
     if (OvercurrentProtector::IsFaultActive())
     {
         PwmOutputKillRegisters();
@@ -138,6 +180,105 @@ void SinglePwmDriver::ApplyOutputImmediate()
     }
 
     sl_pwm_set_duty_cycle(&sl_pwm_pwm0, duty);
+    sDisplayDuty = duty;
+}
+
+void SinglePwmDriver::CancelFadeTimer()
+{
+    if (!sFadeActive)
+    {
+        return;
+    }
+
+    chip::DeviceLayer::PlatformMgr().LockChipStack();
+    chip::DeviceLayer::SystemLayer().CancelTimer(OnFadeTimer, nullptr);
+    chip::DeviceLayer::PlatformMgr().UnlockChipStack();
+    sFadeActive = false;
+}
+
+void SinglePwmDriver::ApplyFadeFrame(uint16_t step)
+{
+    const uint8_t duty = InterpolateDuty(sFadeStartDuty, sFadeTargetDuty, step, sFadeStepsTotal);
+
+    if (OvercurrentProtector::IsFaultActive())
+    {
+        PwmOutputKillRegisters();
+        sRouteDisabled = true;
+        return;
+    }
+
+    if (sRouteDisabled || !sPwmStarted)
+    {
+        PwmOutputRestoreRegisters();
+    }
+
+    sl_pwm_set_duty_cycle(&sl_pwm_pwm0, duty);
+    sDisplayDuty = duty;
+}
+
+void SinglePwmDriver::OnFadeTimer(chip::System::Layer * layer, void * appState)
+{
+    (void) layer;
+    (void) appState;
+
+    if (!sFadeActive || OvercurrentProtector::IsFaultActive())
+    {
+        sFadeActive = false;
+        return;
+    }
+
+    sFadeStep++;
+    if (sFadeStep >= sFadeStepsTotal)
+    {
+        sFadeActive = false;
+        ApplyFadeFrame(sFadeStepsTotal);
+        return;
+    }
+
+    ApplyFadeFrame(sFadeStep);
+    (void) chip::DeviceLayer::SystemLayer().StartTimer(chip::System::Clock::Milliseconds32(kFadeTickMs), OnFadeTimer, nullptr);
+}
+
+void SinglePwmDriver::ScheduleFade(bool restartFade)
+{
+    if (OvercurrentProtector::IsFaultActive())
+    {
+        ApplyOutputImmediate();
+        return;
+    }
+
+    const uint8_t targetDuty = sOn ? LevelToBrightnessPercent(sLevel) : 0;
+    sFadeTargetDuty = targetDuty;
+
+    if (!sFadeActive || restartFade)
+    {
+        sFadeStartDuty = sDisplayDuty;
+    }
+
+    if (sFadeStartDuty == sFadeTargetDuty)
+    {
+        CancelFadeTimer();
+        ApplyFadeFrame(sFadeStepsTotal);
+        return;
+    }
+
+    const uint16_t durationMs = sOn ? (restartFade ? kFadeDurationOnMs : kFadeDurationLevelMs) : kFadeDurationOffMs;
+    sFadeStep       = 0;
+    sFadeStepsTotal = std::max<uint16_t>(durationMs / static_cast<uint16_t>(kFadeTickMs), 1U);
+
+    CancelFadeTimer();
+    ApplyFadeFrame(0);
+
+    chip::DeviceLayer::PlatformMgr().LockChipStack();
+    const CHIP_ERROR err =
+        chip::DeviceLayer::SystemLayer().StartTimer(chip::System::Clock::Milliseconds32(kFadeTickMs), OnFadeTimer, nullptr);
+    chip::DeviceLayer::PlatformMgr().UnlockChipStack();
+    if (err != CHIP_NO_ERROR)
+    {
+        ApplyOutputImmediate();
+        return;
+    }
+    sFadeActive = true;
 }
 
 void SinglePwmDriver::SetOn(bool on)
@@ -153,13 +294,17 @@ void SinglePwmDriver::SetOn(bool on)
     {
         sLevel = 254;
     }
-    ApplyOutputImmediate();
+    ScheduleFade(true);
 }
 
 void SinglePwmDriver::SetLevel(uint8_t level)
 {
     sLevel = level;
-    ApplyOutputImmediate();
+    if (!sOn)
+    {
+        return;
+    }
+    ScheduleFade(false);
 }
 
 void SinglePwmDriver::ApplyClusterLevel(chip::EndpointId endpoint, uint8_t clusterLevel)
@@ -213,6 +358,8 @@ void SinglePwmDriver::ForceOffForFaultFromIsr()
 {
     SaveStateBeforeFault();
     sOn = false;
+    sFadeActive = false;
+    sDisplayDuty = 0;
     PwmOutputKillRegisters();
     sRouteDisabled = true;
 }
@@ -220,7 +367,9 @@ void SinglePwmDriver::ForceOffForFaultFromIsr()
 void SinglePwmDriver::ForceOffForFault()
 {
     SaveStateBeforeFault();
+    CancelFadeTimer();
     sOn = false;
+    sDisplayDuty = 0;
     PwmOutputKillRegisters();
     sRouteDisabled = true;
 }

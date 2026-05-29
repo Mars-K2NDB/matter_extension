@@ -6,6 +6,12 @@
 #include <cstdint>
 #include <lib/core/DataModelTypes.h>
 
+namespace chip {
+namespace System {
+class Layer;
+} // namespace System
+} // namespace chip
+
 class RgbcwStripDriver
 {
 public:
@@ -28,6 +34,19 @@ public:
     static uint8_t ResolveLevelForPwmLocked(chip::EndpointId endpoint, bool on, uint8_t clusterLevel);
 
 private:
+    enum class FadeKind : uint8_t
+    {
+        kOnOff = 0,
+        kLevel = 1,
+        kColor = 2,
+    };
+
+    static void CancelFadeTimer();
+    static void ScheduleFade(FadeKind kind, bool restartFade);
+    static void ApplyFadeFrame(uint16_t step);
+    static void OnFadeTimer(chip::System::Layer * layer, void * appState);
+    static void ComputeTargetOutput(uint8_t & r, uint8_t & g, uint8_t & b, uint8_t & c, uint8_t & w);
+    static void ApplyDisplayOutput(uint8_t r, uint8_t g, uint8_t b, uint8_t c, uint8_t w);
     static void ApplyOutputImmediate();
     static uint8_t LevelToBrightnessPercent(uint8_t level);
 
@@ -41,4 +60,30 @@ private:
     static bool sPreFaultOn;
     static uint8_t sPreFaultLevel;
     static uint16_t sPreFaultCtMireds;
+    static bool sLastOnValid;
+    static uint8_t sLastOnLevel;
+    static uint16_t sLastOnCtMireds;
+    static bool sLastOnUseCt;
+    static uint8_t sLastOnHue;
+    static uint8_t sLastOnSat;
+
+    static uint8_t sDisplayR;
+    static uint8_t sDisplayG;
+    static uint8_t sDisplayB;
+    static uint8_t sDisplayC;
+    static uint8_t sDisplayW;
+    static uint8_t sFadeStartR;
+    static uint8_t sFadeStartG;
+    static uint8_t sFadeStartB;
+    static uint8_t sFadeStartC;
+    static uint8_t sFadeStartW;
+    static uint8_t sFadeTargetR;
+    static uint8_t sFadeTargetG;
+    static uint8_t sFadeTargetB;
+    static uint8_t sFadeTargetC;
+    static uint8_t sFadeTargetW;
+    static FadeKind sFadeKind;
+    static uint16_t sFadeStep;
+    static uint16_t sFadeStepsTotal;
+    static bool sFadeActive;
 };
