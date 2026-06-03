@@ -12,7 +12,9 @@ REF_APP = REPO / "lighting_mot" / "lighting_app"
 REF_BOOT = REPO / "lighting_mot" / "matter_bootloader"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = Path(__file__).resolve().parent
-OVERLAYS = SCRIPT_DIR / "light_products"
+TEMPLATES = SCRIPT_DIR / "templates"
+DRIVERS = TEMPLATES / "drivers"
+OVERLAYS = TEMPLATES / "overlays"
 CHEF_ZAP = REPO / "third_party" / "matter_sdk" / "examples" / "chef" / "devices"
 
 PORT_C = "SL_GPIO_PORT_C"
@@ -242,27 +244,39 @@ def patch_slcp(slcp: Path, product: dict) -> None:
             text,
         )
         for src_name in (
-            "CtDualPwmDriver.cpp",
-            "SinglePwmDriver.cpp",
-            "RgbcwPwmDriver.cpp",
+            "ct_dual_pwm_driver.cpp",
+            "single_pwm_driver.cpp",
+            "rgbcw_pwm_driver.cpp",
+            "rgbcw_strip_driver.cpp",
         ):
             text = text.replace(f"- path: src/{src_name}\n", "")
-        for hdr in ("CtDualPwmDriver.h", "CtPwmVersion.h", "SinglePwmDriver.h", "RgbcwPwmDriver.h"):
+        for hdr in (
+            "ct_dual_pwm_driver.h",
+            "ct_pwm_version.h",
+            "single_pwm_driver.h",
+            "rgbcw_pwm_driver.h",
+            "rgbcw_strip_driver.h",
+        ):
             text = text.replace(f"  - path: {hdr}\n", "")
     slcp.write_text(text, encoding="utf-8")
 
 
 def patch_driver_refs(app: Path) -> None:
-    """Replace CtDualPwmDriver with LightOutput in shared protection/flash code."""
-    for rel in ("src/OvercurrentProtector.cpp", "src/DeviceUserFlash.cpp", "src/CustomerAppTask.cpp"):
+    """Replace CtDualPwmDriver with light_output in shared protection/flash code."""
+    for rel in (
+        "src/overcurrent_protector.cpp",
+        "src/device_user_flash.cpp",
+        "src/CustomerAppTask.cpp",
+    ):
         f = app / rel
         if not f.is_file():
             continue
         text = f.read_text(encoding="utf-8")
-        if "CtDualPwmDriver" not in text:
+        if "CtDualPwmDriver" not in text and "ct_dual_pwm_driver" not in text:
             continue
-        text = text.replace('#include "CtDualPwmDriver.h"', '#include "LightOutput.h"')
-        text = text.replace("CtDualPwmDriver::", "LightOutput::")
+        text = text.replace('#include "CtDualPwmDriver.h"', '#include "light_output.h"')
+        text = text.replace('#include "ct_dual_pwm_driver.h"', '#include "light_output.h"')
+        text = text.replace("CtDualPwmDriver::", "light_output::")
         f.write_text(text, encoding="utf-8")
 
 
@@ -274,6 +288,37 @@ def patch_slcp_sources(slcp: Path, add: list[str], remove: list[str]) -> None:
         if f"- path: src/{a}\n" not in text:
             text = text.replace("- path: src/main.cpp\n", f"- path: src/main.cpp\n- path: src/{a}\n")
     slcp.write_text(text, encoding="utf-8")
+
+
+def copy_driver_files(app: Path, names: list[str]) -> None:
+    for name in names:
+        src = DRIVERS / name
+        if not src.is_file():
+            raise SystemExit(f"missing driver template: {src}")
+        dest_dir = app / ("src" if name.endswith(".cpp") else "include")
+        shutil.copy2(src, dest_dir / name)
+
+
+def remove_stale_drivers(app: Path, names: list[str]) -> None:
+    for name in names:
+        dest = app / ("src" if name.endswith(".cpp") else "include") / name
+        if dest.is_file():
+            dest.unlink()
+
+
+OTHER_DRIVER_SRC = [
+    "ct_dual_pwm_driver.cpp",
+    "single_pwm_driver.cpp",
+    "rgbcw_pwm_driver.cpp",
+    "rgbcw_strip_driver.cpp",
+]
+OTHER_DRIVER_HDR = [
+    "ct_dual_pwm_driver.h",
+    "ct_pwm_version.h",
+    "single_pwm_driver.h",
+    "rgbcw_pwm_driver.h",
+    "rgbcw_strip_driver.h",
+]
 
 
 def migrate_product(name: str, product: dict) -> None:
@@ -329,47 +374,28 @@ def migrate_product(name: str, product: dict) -> None:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(rel, target)
 
-    drivers = SCRIPT_DIR / "light_drivers"
     if name == "dimmable_light":
-        shutil.copy2(drivers / "SinglePwmDriver.h", app / "include" / "SinglePwmDriver.h")
-        shutil.copy2(drivers / "SinglePwmDriver.cpp", app / "src" / "SinglePwmDriver.cpp")
-        patch_slcp_sources(
-            slcp_path,
-            ["SinglePwmDriver.cpp"],
-            ["CtDualPwmDriver.cpp"],
+        copy_driver_files(app, ["single_pwm_driver.h", "single_pwm_driver.cpp"])
+        patch_slcp_sources(slcp_path, ["single_pwm_driver.cpp"], ["ct_dual_pwm_driver.cpp"])
+        remove_stale_drivers(app, OTHER_DRIVER_SRC + OTHER_DRIVER_HDR)
+    elif name == "colortemperature_light":
+        copy_driver_files(
+            app,
+            ["ct_dual_pwm_driver.h", "ct_dual_pwm_driver.cpp", "ct_pwm_version.h"],
         )
-        for stale_drv in ("CtDualPwmDriver.cpp", "CtDualPwmDriver.h", "CtPwmVersion.h"):
-            p = app / ("src" if stale_drv.endswith(".cpp") else "include") / stale_drv
-            if p.is_file():
-                p.unlink()
+        patch_slcp_sources(slcp_path, ["ct_dual_pwm_driver.cpp"], ["single_pwm_driver.cpp"])
+        remove_stale_drivers(
+            app,
+            [x for x in OTHER_DRIVER_SRC + OTHER_DRIVER_HDR if not x.startswith("ct_")],
+        )
     elif name == "extended_color_light":
-        for f in ("RgbcwPwmDriver.h", "RgbcwPwmDriver.cpp"):
-            shutil.copy2(drivers / f, app / ("include" if f.endswith(".h") else "src") / f)
-        patch_slcp_sources(
-            slcp_path,
-            ["RgbcwPwmDriver.cpp"],
-            ["CtDualPwmDriver.cpp"],
-        )
-        for stale_drv in ("CtDualPwmDriver.cpp", "CtDualPwmDriver.h", "CtPwmVersion.h"):
-            p = app / ("src" if stale_drv.endswith(".cpp") else "include") / stale_drv
-            if p.is_file():
-                p.unlink()
+        copy_driver_files(app, ["rgbcw_pwm_driver.h", "rgbcw_pwm_driver.cpp"])
+        patch_slcp_sources(slcp_path, ["rgbcw_pwm_driver.cpp"], ["ct_dual_pwm_driver.cpp"])
+        remove_stale_drivers(app, OTHER_DRIVER_SRC + OTHER_DRIVER_HDR)
     elif name == "extended_color_light_strip":
-        for f in ("RgbcwStripDriver.h", "RgbcwStripDriver.cpp"):
-            shutil.copy2(drivers / f, app / ("include" if f.endswith(".h") else "src") / f)
-        patch_slcp_sources(
-            slcp_path,
-            ["RgbcwStripDriver.cpp"],
-            ["CtDualPwmDriver.cpp"],
-        )
-        strip_app = OVERLAYS / "extended_color_light" / "src" / "CustomerAppTask.cpp"
-        if strip_app.is_file():
-            text = strip_app.read_text(encoding="utf-8").replace("RgbcwPwmDriver.h", "RgbcwStripDriver.h")
-            (app / "src" / "CustomerAppTask.cpp").write_text(text, encoding="utf-8")
-        for stale_drv in ("CtDualPwmDriver.cpp", "CtDualPwmDriver.h", "CtPwmVersion.h"):
-            p = app / ("src" if stale_drv.endswith(".cpp") else "include") / stale_drv
-            if p.is_file():
-                p.unlink()
+        copy_driver_files(app, ["rgbcw_strip_driver.h", "rgbcw_strip_driver.cpp"])
+        patch_slcp_sources(slcp_path, ["rgbcw_strip_driver.cpp"], ["ct_dual_pwm_driver.cpp"])
+        remove_stale_drivers(app, OTHER_DRIVER_SRC + OTHER_DRIVER_HDR)
 
     patch_driver_refs(app)
 
@@ -381,7 +407,14 @@ def migrate_product(name: str, product: dict) -> None:
             patch_ct_dual_pintool(pintool)
 
     text = slcp_path.read_text(encoding="utf-8")
-    extra_headers = ["LightOutput.h", "SinglePwmDriver.h", "RgbcwPwmDriver.h", "RgbcwStripDriver.h"]
+    extra_headers = [
+        "light_output.h",
+        "single_pwm_driver.h",
+        "ct_dual_pwm_driver.h",
+        "ct_pwm_version.h",
+        "rgbcw_pwm_driver.h",
+        "rgbcw_strip_driver.h",
+    ]
     for hdr in extra_headers:
         entry = f"  - path: {hdr}\n"
         if entry not in text and (app / "include" / hdr).is_file():

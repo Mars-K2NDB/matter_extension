@@ -18,12 +18,12 @@
 
 ## 脚本目录
 
-产品迁移与驱动源码位于 `project/scripts/`：
+`project/scripts/` 为迁移工具，**不参与编译**；详见 [scripts/README.md](scripts/README.md)。
 
-- `setup_light_projects.py` — 从 `lighting_mot` 同步配置与自定义代码
-- `rename_official_naming.py` — 将 `lighting_app` 批量改为官方命名（已执行可跳过）
-- `light_drivers/` — 各灯型 PWM/SPI 驱动
-- `light_products/` — 各产品的 `CustomerAppTask` 等覆盖文件
+- `setup_light_projects.py` — 从 `lighting_mot` 同步并部署 `templates/` 驱动与覆盖
+- `patch_pwm_configs.py` / `patch_pintools.py` — 可选，批量恢复引脚配置
+- `templates/drivers/` — 各灯型驱动模板（snake_case，与 `*_app` 内一致）
+- `templates/overlays/` — 各产品 `light_output.h`、`CustomerAppTask.cpp` 等
 
 ## 环境准备
 
@@ -52,57 +52,34 @@ python3 project/scripts/setup_light_projects.py
 
 ## 编译指令
 
-以下命令均在**仓库根目录**执行。SLC 会生成工程并调用 CMake 完成编译。
+在**仓库根目录**使用 `build.sh`（内部调用 `slc/sl_build.py`）：
 
-### 1. 调光灯（Dimmable Light）
+```bash
+./build.sh dimmable_light
+./build.sh colortemperature_light
+./build.sh extended_color_light
+./build.sh extended_color_light_strip
+```
+
+仅重新编译（跳过 SLC generate）：
+
+```bash
+./build.sh rebuild <产品目录名>
+```
+
+清除编译产物：
+
+```bash
+./build.sh clean <产品目录名>
+```
+
+也可直接调用：
 
 ```bash
 python3 slc/sl_build.py \
-  -p project/dimmable_light/matter_thread_soc_dimmable_light_app_series_2_internal_freertos.slcw \
+  -p project/<产品目录>/matter_thread_soc_<device>_app_series_2_internal_freertos.slcw \
   -b brd2703a
 ```
-
-### 2. 色温灯（Color Temperature Light）
-
-```bash
-python3 slc/sl_build.py \
-  -p project/colortemperature_light/matter_thread_soc_colortemperature_light_app_series_2_internal_freertos.slcw \
-  -b brd2703a
-```
-
-### 3. 五路 RGBCW 灯（Extended Color Light）
-
-```bash
-python3 slc/sl_build.py \
-  -p project/extended_color_light/matter_thread_soc_extended_color_light_app_series_2_internal_freertos.slcw \
-  -b brd2703a
-```
-
-### 4. RGBCW SPI 幻彩灯带（Extended Color Light Strip）
-
-```bash
-python3 slc/sl_build.py \
-  -p project/extended_color_light_strip/matter_thread_soc_extended_color_light_strip_app_series_2_internal_freertos.slcw \
-  -b brd2703a
-```
-
-## 推荐：使用 build_light.py 编译
-
-在 Simplicity Studio 中用 **Pin Tool** 配好 PWM 后，用本脚本编译（**默认不会改写** `config/sl_pwm_init_pwm*_config.h` 与 `.pintool`）：
-
-```bash
-python3 project/scripts/build_light.py \
-  project/<产品目录>/matter_thread_soc_<device>_app_series_2_internal_freertos.slcw \
-  -b brd2703a
-```
-
-仅重新编译（已 `slc generate` 且引脚未改）：
-
-```bash
-python3 project/scripts/build_light.py project/<产品>/...slcw -b brd2703a -s
-```
-
-若需用脚本批量写回引脚宏（会覆盖 Studio 配置），加 `--patch-config`。
 
 ## PWM 与驱动通道（应用层按引脚自动匹配）
 
