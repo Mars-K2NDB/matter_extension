@@ -20,11 +20,11 @@ readme:
 - path: README.md
 source:
 - path: src/CustomerAppTask.cpp
-- path: src/CtDualPwmDriver.cpp
-- path: src/DeviceUserFlash.cpp
-- path: src/VoltageAdcDriver.cpp
-- path: src/OvercurrentProtector.cpp
-- path: src/ShortCircuitProtector.cpp
+- path: src/ct_dual_pwm_driver.cpp
+- path: src/device_user_flash.cpp
+- path: src/voltage_adc_driver.cpp
+- path: src/overcurrent_protector.cpp
+- path: src/short_circuit_protector.cpp
 - path: src/main.cpp
 include:
 - path: include
@@ -35,15 +35,15 @@ include:
 - path: include
   file_list:
   - path: CustomerAppTask.h
-  - path: LightOutput.h
-  - path: CtDualPwmDriver.h
-  - path: DeviceUserFlash.h
-  - path: CtPwmVersion.h
-  - path: VoltageAdcDriver.h
+  - path: light_output.h
+  - path: ct_dual_pwm_driver.h
+  - path: device_user_flash.h
+  - path: ct_pwm_version.h
+  - path: voltage_adc_driver.h
   - path: voltage_adc_config.h
-  - path: OvercurrentProtector.h
+  - path: overcurrent_protector.h
   - path: overcurrent_protect_config.h
-  - path: ShortCircuitProtector.h
+  - path: short_circuit_protector.h
   - path: short_circuit_protect_config.h
 sdk:
   vendor: silabs

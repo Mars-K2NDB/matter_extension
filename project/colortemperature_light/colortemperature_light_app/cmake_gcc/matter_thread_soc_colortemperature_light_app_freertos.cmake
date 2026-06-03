@@ -1018,13 +1018,13 @@ add_library(slc OBJECT
     "../autogen/zap-generated/CodeDrivenInitShutdown.cpp"
     "../autogen/zap-generated/IMClusterCommandHandler.cpp"
     "../main.c"
-    "../src/CtDualPwmDriver.cpp"
+    "../src/ct_dual_pwm_driver.cpp"
     "../src/CustomerAppTask.cpp"
-    "../src/DeviceUserFlash.cpp"
+    "../src/device_user_flash.cpp"
     "../src/main.cpp"
-    "../src/OvercurrentProtector.cpp"
-    "../src/ShortCircuitProtector.cpp"
-    "../src/VoltageAdcDriver.cpp"
+    "../src/overcurrent_protector.cpp"
+    "../src/short_circuit_protector.cpp"
+    "../src/voltage_adc_driver.cpp"
 )
 
 target_include_directories(slc PUBLIC

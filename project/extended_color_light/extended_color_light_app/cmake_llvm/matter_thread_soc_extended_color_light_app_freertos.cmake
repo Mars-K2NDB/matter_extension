@@ -1019,12 +1019,12 @@ add_library(slc OBJECT
     "../autogen/zap-generated/IMClusterCommandHandler.cpp"
     "../main.c"
     "../src/CustomerAppTask.cpp"
-    "../src/DeviceUserFlash.cpp"
+    "../src/device_user_flash.cpp"
     "../src/main.cpp"
-    "../src/OvercurrentProtector.cpp"
-    "../src/RgbcwPwmDriver.cpp"
-    "../src/ShortCircuitProtector.cpp"
-    "../src/VoltageAdcDriver.cpp"
+    "../src/overcurrent_protector.cpp"
+    "../src/rgbcw_pwm_driver.cpp"
+    "../src/short_circuit_protector.cpp"
+    "../src/voltage_adc_driver.cpp"
 )
 
 target_include_directories(slc PUBLIC

@@ -29,14 +29,14 @@ struct AppEvent : public BaseAppEvent
     enum AppEventTypes
     {
         kEventType_Light = BaseAppEvent::kEventType_Max + 1,
-        kEventType_CtPwm,
+        kEventType_LightStrip,
     };
 
-    enum CtPwmEventKind : uint8_t
+    enum LightStripEventKind : uint8_t
     {
-        kCtPwmOn    = 0,
-        kCtPwmLevel = 1,
-        kCtPwmCt    = 2,
+        kOnOff    = 0,
+        kLevel = 1,
+        kColorTemp    = 2,
     };
 
     union
@@ -50,11 +50,11 @@ struct AppEvent : public BaseAppEvent
 
         struct
         {
-            uint8_t Kind;
-            bool On;
-            uint8_t Level;
-            uint16_t CtMireds;
-        } CtPwmEvent;
+            uint8_t kind;
+            bool on;
+            uint8_t level;
+            uint16_t ct_mireds;
+        } light_strip_event;
 
 #if (defined(SL_MATTER_RGB_LED_ENABLED) && SL_MATTER_RGB_LED_ENABLED == 1)
         struct

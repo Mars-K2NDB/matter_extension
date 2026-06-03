@@ -6,12 +6,12 @@
 
 #include "adc_protect_config.h"
 #include "AppConfig.h"
-#include "DeviceUserFlash.h"
-#include "LightOutput.h"
-#include "OvercurrentProtector.h"
-#include "ShortCircuitProtector.h"
-#include "SinglePwmDriver.h"
-#include "VoltageAdcDriver.h"
+#include "device_user_flash.h"
+#include "light_output.h"
+#include "overcurrent_protector.h"
+#include "short_circuit_protector.h"
+#include "single_pwm_driver.h"
+#include "voltage_adc_driver.h"
 
 #include <app/clusters/on-off-server/on-off-server.h>
 #include <app/reporting/reporting.h>
@@ -30,25 +30,25 @@ CustomerAppTask CustomerAppTask::sAppTask;
 
 namespace {
 
-bool sOutputsReady = false;
+bool outputs_ready_ = false;
 
-void PwmEventHandler(AppEvent * aEvent)
+void LightStripEventHandler(AppEvent* event)
 {
-    const auto & ev = aEvent->CtPwmEvent;
+    const auto& ev = event->light_strip_event;
 
-    switch (ev.Kind)
+    switch (ev.kind)
     {
-    case AppEvent::kCtPwmOn:
-        if (ev.On && OvercurrentProtector::BlocksTurnOn())
+    case AppEvent::kOnOff:
+        if (ev.on && OvercurrentProtector::BlocksTurnOn())
         {
             ChipLogProgress(AppServer, "SinglePwm: on ignored (overcurrent fault)");
             break;
         }
-        LightOutput::SetOn(ev.On);
+        light_output::SetOn(ev.on);
         break;
 
-    case AppEvent::kCtPwmLevel:
-        LightOutput::ApplyClusterLevel(LIGHT_ENDPOINT, ev.Level);
+    case AppEvent::kLevel:
+        light_output::ApplyClusterLevel(LIGHT_ENDPOINT, ev.level);
         break;
 
     default:
@@ -56,14 +56,14 @@ void PwmEventHandler(AppEvent * aEvent)
     }
 }
 
-void PostPwmEvent(const AppEvent & eventTemplate)
+void PostLightStripEvent(const AppEvent& eventTemplate)
 {
-    if (!sOutputsReady)
+    if (!outputs_ready_)
     {
         return;
     }
     AppEvent event = eventTemplate;
-    event.Handler  = PwmEventHandler;
+    event.Handler  = LightStripEventHandler;
     CustomerAppTask::GetAppTask().PostEvent(&event);
 }
 
@@ -76,17 +76,17 @@ AppTask & AppTask::GetAppTask()
 
 CHIP_ERROR CustomerAppTask::InitLightImpl()
 {
-    if (DeviceUserFlash::ProcessPowerCycleReset())
+    if (device_user_flash::ProcessPowerCycleReset())
     {
         return CHIP_NO_ERROR;
     }
 
-    DeviceUserFlash::Init();
-    DeviceUserFlash::LoadSavedLightState();
+    device_user_flash::Init();
+    device_user_flash::LoadSavedLightState();
 
     ReturnErrorOnFailure(AppTask::InitLight());
 
-    LightOutput::Init();
+    light_output::Init();
     OvercurrentProtector::Init();
     ShortCircuitProtector::Init();
 #if DIMMABLE_LIGHT_ADC_PROTECT_ENABLE
@@ -95,58 +95,58 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
 #endif
 
     PlatformMgr().LockChipStack();
-    DeviceUserFlash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);
+    device_user_flash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);
     PlatformMgr().UnlockChipStack();
 
-    LightOutput::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
-    LightOutput::SetOn(false);
+    light_output::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
+    light_output::SetOn(false);
 
-    DeviceUserFlash::EnablePersistedLightStateSave();
-    sOutputsReady = true;
+    device_user_flash::EnablePersistedLightStateSave();
+    outputs_ready_ = true;
 
     return CHIP_NO_ERROR;
 }
 
-void CustomerAppTask::LightActionEventHandlerImpl(AppEvent * aEvent)
+void CustomerAppTask::LightActionEventHandlerImpl(AppEvent* event)
 {
-    bool wasOn = false;
+    bool was_on = false;
     PlatformMgr().LockChipStack();
-    OnOffServer::Instance().getOnOffValue(LIGHT_ENDPOINT, &wasOn);
+    OnOffServer::Instance().getOnOffValue(LIGHT_ENDPOINT, &was_on);
     PlatformMgr().UnlockChipStack();
 
-    AppTask::LightActionEventHandler(aEvent);
+    AppTask::LightActionEventHandler(event);
 
     if (!OvercurrentProtector::IsFaultActive())
     {
         AppEvent event{};
-        event.Type            = AppEvent::kEventType_CtPwm;
-        event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-        event.CtPwmEvent.On   = !wasOn;
-        PostPwmEvent(event);
+        event.Type            = AppEvent::kEventType_LightStrip;
+        event.light_strip_event.kind = AppEvent::kOnOff;
+        event.light_strip_event.on   = !was_on;
+        PostLightStripEvent(event);
     }
 }
 
-void CustomerAppTask::LightTimerEventHandlerImpl(void * timerCbArg)
+void CustomerAppTask::LightTimerEventHandlerImpl(void* timer_cb_arg)
 {
-    AppTask::LightTimerEventHandler(timerCbArg);
+    AppTask::LightTimerEventHandler(timer_cb_arg);
 
     AppEvent event{};
-    event.Type            = AppEvent::kEventType_CtPwm;
-    event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-    event.CtPwmEvent.On   = false;
-    PostPwmEvent(event);
+    event.Type            = AppEvent::kEventType_LightStrip;
+    event.light_strip_event.kind = AppEvent::kOnOff;
+    event.light_strip_event.on   = false;
+    PostLightStripEvent(event);
 }
 
-void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::ConcreteAttributePath & attributePath, uint8_t type,
-                                                        uint16_t size, uint8_t * value)
+void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::ConcreteAttributePath& attribute_path, uint8_t type,
+                                                        uint16_t size, uint8_t* value)
 {
-    const ClusterId clusterId     = attributePath.mClusterId;
-    const AttributeId attributeId = attributePath.mAttributeId;
+    const ClusterId cluster_id     = attribute_path.mClusterId;
+    const AttributeId attribute_id = attribute_path.mAttributeId;
 
-    switch (clusterId)
+    switch (cluster_id)
     {
     case OnOff::Id:
-        if (attributeId == OnOff::Attributes::OnOff::Id && value != nullptr && size == sizeof(uint8_t))
+        if (attribute_id == OnOff::Attributes::OnOff::Id && value != nullptr && size == sizeof(uint8_t))
         {
             if (OvercurrentProtector::IsFaultActive() && *value != 0)
             {
@@ -159,22 +159,22 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
             }
 
             AppEvent event{};
-            event.Type            = AppEvent::kEventType_CtPwm;
-            event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-            event.CtPwmEvent.On   = (*value != 0);
-            PostPwmEvent(event);
+            event.Type            = AppEvent::kEventType_LightStrip;
+            event.light_strip_event.kind = AppEvent::kOnOff;
+            event.light_strip_event.on   = (*value != 0);
+            PostLightStripEvent(event);
         }
         break;
 
     case LevelControl::Id:
-        if (attributeId == LevelControl::Attributes::CurrentLevel::Id && value != nullptr && size == sizeof(uint8_t))
+        if (attribute_id == LevelControl::Attributes::CurrentLevel::Id && value != nullptr && size == sizeof(uint8_t))
         {
             AppEvent event{};
-            event.Type             = AppEvent::kEventType_CtPwm;
-            event.CtPwmEvent.Kind  = AppEvent::kCtPwmLevel;
-            event.CtPwmEvent.Level = *value;
-            PostPwmEvent(event);
-            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
+            event.Type             = AppEvent::kEventType_LightStrip;
+            event.light_strip_event.kind  = AppEvent::kLevel;
+            event.light_strip_event.level = *value;
+            PostLightStripEvent(event);
+            device_user_flash::UpdateLightStateFromAttributeChange(attribute_path.mEndpointId, cluster_id, attribute_id);
         }
         break;
 
@@ -182,5 +182,5 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
         break;
     }
 
-    AppTask::DMPostAttributeChangeCallback(attributePath, type, size, value);
+    AppTask::DMPostAttributeChangeCallback(attribute_path, type, size, value);
 }

@@ -27,11 +27,11 @@
 #include "CustomerAppTask.h"
 
 #include "AppConfig.h"
-#include "LightOutput.h"
-#include "DeviceUserFlash.h"
-#include "OvercurrentProtector.h"
-#include "ShortCircuitProtector.h"
-#include "VoltageAdcDriver.h"
+#include "light_output.h"
+#include "device_user_flash.h"
+#include "overcurrent_protector.h"
+#include "short_circuit_protector.h"
+#include "voltage_adc_driver.h"
 
 #include <app/clusters/on-off-server/on-off-server.h>
 #include <app/reporting/reporting.h>
@@ -54,7 +54,7 @@ CustomerAppTask CustomerAppTask::sAppTask;
 
 namespace {
 
-bool sCtPwmOutputsReady = false;
+bool outputs_ready_ = false;
 
 
 /** Push CT/RemainingTime to active subscriptions (commissioner apps wait for these reports). */
@@ -66,27 +66,27 @@ void NotifyColorTempAttributeReports(EndpointId endpoint)
         ConcreteAttributePath(endpoint, ColorControl::Id, ColorControl::Attributes::RemainingTime::Id));
 }
 
-void CtPwmEventHandler(AppEvent * aEvent)
+void LightStripEventHandler(AppEvent* event)
 {
-    const auto & ev = aEvent->CtPwmEvent;
+    const auto& ev = event->light_strip_event;
 
-    switch (ev.Kind)
+    switch (ev.kind)
     {
-    case AppEvent::kCtPwmOn:
-        if (ev.On && OvercurrentProtector::BlocksTurnOn())
+    case AppEvent::kOnOff:
+        if (ev.on && OvercurrentProtector::BlocksTurnOn())
         {
             ChipLogProgress(AppServer, "CtPwm: on event ignored (overcurrent fault)");
             break;
         }
-        LightOutput::SetOn(ev.On);
+        light_output::SetOn(ev.on);
         break;
 
-    case AppEvent::kCtPwmLevel:
-        LightOutput::ApplyClusterLevel(LIGHT_ENDPOINT, ev.Level);
+    case AppEvent::kLevel:
+        light_output::ApplyClusterLevel(LIGHT_ENDPOINT, ev.level);
         break;
 
-    case AppEvent::kCtPwmCt:
-        LightOutput::SetColorTemperatureMireds(ev.CtMireds);
+    case AppEvent::kColorTemp:
+        light_output::SetColorTemperatureMireds(ev.ct_mireds);
         break;
 
     default:
@@ -94,14 +94,14 @@ void CtPwmEventHandler(AppEvent * aEvent)
     }
 }
 
-void PostCtPwmEvent(const AppEvent & eventTemplate)
+void Postlight_strip_event(const AppEvent& eventTemplate)
 {
-    if (!sCtPwmOutputsReady)
+    if (!outputs_ready_)
     {
         return;
     }
     AppEvent event = eventTemplate;
-    event.Handler  = CtPwmEventHandler;
+    event.Handler  = LightStripEventHandler;
     CustomerAppTask::GetAppTask().PostEvent(&event);
 }
 
@@ -114,19 +114,19 @@ AppTask & AppTask::GetAppTask()
 
 CHIP_ERROR CustomerAppTask::InitLightImpl()
 {
-    if (DeviceUserFlash::ProcessPowerCycleReset())
+    if (device_user_flash::ProcessPowerCycleReset())
     {
         return CHIP_NO_ERROR;
     }
 
     // Register reconnect reporting before stack may already be up.
-    DeviceUserFlash::Init();
+    device_user_flash::Init();
 
-    DeviceUserFlash::LoadSavedLightState();
+    device_user_flash::LoadSavedLightState();
 
     ReturnErrorOnFailure(AppTask::InitLight());
 
-    LightOutput::Init();
+    light_output::Init();
     VoltageAdcDriver::Init();
     OvercurrentProtector::Init();
     ShortCircuitProtector::Init();
@@ -144,69 +144,69 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
         ColorControl::Attributes::ColorCapabilities::Set(LIGHT_ENDPOINT, caps);
     }
 
-    DeviceUserFlash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);
+    device_user_flash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);
 
-    if (!DeviceUserFlash::HasPersistedLightState())
+    if (!device_user_flash::HasPersistedLightState())
     {
-        uint16_t ctMireds = 0;
-        if (ColorControl::Attributes::ColorTemperatureMireds::Get(LIGHT_ENDPOINT, &ctMireds) != Status::Success ||
-            ctMireds < LightOutput::kCtMinMireds || ctMireds > LightOutput::kCtMaxMireds)
+        uint16_t ct_mireds = 0;
+        if (ColorControl::Attributes::ColorTemperatureMireds::Get(LIGHT_ENDPOINT, &ct_mireds) != Status::Success ||
+            ct_mireds < light_output::kCtMinMireds || ct_mireds > light_output::kCtMaxMireds)
         {
-            ColorControl::Attributes::ColorTemperatureMireds::Set(LIGHT_ENDPOINT, LightOutput::kDefaultCtMireds);
+            ColorControl::Attributes::ColorTemperatureMireds::Set(LIGHT_ENDPOINT, light_output::kDefaultCtMireds);
         }
     }
     PlatformMgr().UnlockChipStack();
 
     // Load restored level/CT into PWM driver while lamp stays off.
-    LightOutput::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
-    LightOutput::SetOn(false);
+    light_output::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
+    light_output::SetOn(false);
 
-    DeviceUserFlash::EnablePersistedLightStateSave();
-    sCtPwmOutputsReady = true;
+    device_user_flash::EnablePersistedLightStateSave();
+    outputs_ready_ = true;
 
     return CHIP_NO_ERROR;
 }
 
-void CustomerAppTask::LightActionEventHandlerImpl(AppEvent * aEvent)
+void CustomerAppTask::LightActionEventHandlerImpl(AppEvent* event)
 {
-    bool wasOn = false;
+    bool was_on = false;
     PlatformMgr().LockChipStack();
-    OnOffServer::Instance().getOnOffValue(LIGHT_ENDPOINT, &wasOn);
+    OnOffServer::Instance().getOnOffValue(LIGHT_ENDPOINT, &was_on);
     PlatformMgr().UnlockChipStack();
 
-    AppTask::LightActionEventHandler(aEvent);
+    AppTask::LightActionEventHandler(event);
 
     if (!OvercurrentProtector::IsFaultActive())
     {
         AppEvent event{};
-        event.Type            = AppEvent::kEventType_CtPwm;
-        event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-        event.CtPwmEvent.On   = !wasOn;
-        PostCtPwmEvent(event);
+        event.Type            = AppEvent::kEventType_LightStrip;
+        event.light_strip_event.kind = AppEvent::kOnOff;
+        event.light_strip_event.on   = !was_on;
+        Postlight_strip_event(event);
     }
 }
 
-void CustomerAppTask::LightTimerEventHandlerImpl(void * timerCbArg)
+void CustomerAppTask::LightTimerEventHandlerImpl(void* timer_cb_arg)
 {
-    AppTask::LightTimerEventHandler(timerCbArg);
+    AppTask::LightTimerEventHandler(timer_cb_arg);
 
     AppEvent event{};
-    event.Type            = AppEvent::kEventType_CtPwm;
-    event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-    event.CtPwmEvent.On   = false;
-    PostCtPwmEvent(event);
+    event.Type            = AppEvent::kEventType_LightStrip;
+    event.light_strip_event.kind = AppEvent::kOnOff;
+    event.light_strip_event.on   = false;
+    Postlight_strip_event(event);
 }
 
-void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::ConcreteAttributePath & attributePath, uint8_t type,
-                                                        uint16_t size, uint8_t * value)
+void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::ConcreteAttributePath& attribute_path, uint8_t type,
+                                                        uint16_t size, uint8_t* value)
 {
-    const ClusterId clusterId     = attributePath.mClusterId;
-    const AttributeId attributeId = attributePath.mAttributeId;
+    const ClusterId cluster_id     = attribute_path.mClusterId;
+    const AttributeId attribute_id = attribute_path.mAttributeId;
 
-    switch (clusterId)
+    switch (cluster_id)
     {
     case OnOff::Id:
-        if (attributeId == OnOff::Attributes::OnOff::Id && value != nullptr && size == sizeof(uint8_t))
+        if (attribute_id == OnOff::Attributes::OnOff::Id && value != nullptr && size == sizeof(uint8_t))
         {
             if (OvercurrentProtector::IsFaultActive() && *value != 0)
             {
@@ -220,45 +220,45 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
             }
 
             AppEvent event{};
-            event.Type            = AppEvent::kEventType_CtPwm;
-            event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-            event.CtPwmEvent.On   = (*value != 0);
-            PostCtPwmEvent(event);
+            event.Type            = AppEvent::kEventType_LightStrip;
+            event.light_strip_event.kind = AppEvent::kOnOff;
+            event.light_strip_event.on   = (*value != 0);
+            Postlight_strip_event(event);
         }
         break; // fall through to AppTask for board LED
 
     case LevelControl::Id:
-        if (attributeId == LevelControl::Attributes::CurrentLevel::Id && value != nullptr && size == sizeof(uint8_t))
+        if (attribute_id == LevelControl::Attributes::CurrentLevel::Id && value != nullptr && size == sizeof(uint8_t))
         {
             AppEvent event{};
-            event.Type             = AppEvent::kEventType_CtPwm;
-            event.CtPwmEvent.Kind  = AppEvent::kCtPwmLevel;
-            event.CtPwmEvent.Level = *value;
-            PostCtPwmEvent(event);
-            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
+            event.Type             = AppEvent::kEventType_LightStrip;
+            event.light_strip_event.kind  = AppEvent::kLevel;
+            event.light_strip_event.level = *value;
+            Postlight_strip_event(event);
+            device_user_flash::UpdateLightStateFromAttributeChange(attribute_path.mEndpointId, cluster_id, attribute_id);
         }
         break; // level/CT only; OnOff is not persisted
 
     case ColorControl::Id:
-        if (attributeId == ColorControl::Attributes::ColorTemperatureMireds::Id && value != nullptr &&
+        if (attribute_id == ColorControl::Attributes::ColorTemperatureMireds::Id && value != nullptr &&
             size == sizeof(uint16_t))
         {
             AppEvent event{};
-            event.Type               = AppEvent::kEventType_CtPwm;
-            event.CtPwmEvent.Kind    = AppEvent::kCtPwmCt;
-            event.CtPwmEvent.CtMireds  = *reinterpret_cast<uint16_t *>(value);
-            PostCtPwmEvent(event);
+            event.Type               = AppEvent::kEventType_LightStrip;
+            event.light_strip_event.kind    = AppEvent::kColorTemp;
+            event.light_strip_event.ct_mireds  = *reinterpret_cast<uint16_t *>(value);
+            Postlight_strip_event(event);
             // Attribute is already in the Matter store; push reports without waiting for PWM queue.
-            NotifyColorTempAttributeReports(attributePath.mEndpointId);
-            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
+            NotifyColorTempAttributeReports(attribute_path.mEndpointId);
+            device_user_flash::UpdateLightStateFromAttributeChange(attribute_path.mEndpointId, cluster_id, attribute_id);
             return;
         }
-        if (attributeId == ColorControl::Attributes::ColorMode::Id ||
-            attributeId == ColorControl::Attributes::EnhancedColorMode::Id)
+        if (attribute_id == ColorControl::Attributes::ColorMode::Id ||
+            attribute_id == ColorControl::Attributes::EnhancedColorMode::Id)
         {
             // handleModeSwitch updates these before CT; apps often wait for mode reports.
-            MatterReportingAttributeChangeCallback(attributePath);
-            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
+            MatterReportingAttributeChangeCallback(attribute_path);
+            device_user_flash::UpdateLightStateFromAttributeChange(attribute_path.mEndpointId, cluster_id, attribute_id);
             return;
         }
         // Skip AppTask RGB handler during other Color Control attributes.
@@ -268,5 +268,5 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
         break;
     }
 
-    AppTask::DMPostAttributeChangeCallback(attributePath, type, size, value);
+    AppTask::DMPostAttributeChangeCallback(attribute_path, type, size, value);
 }

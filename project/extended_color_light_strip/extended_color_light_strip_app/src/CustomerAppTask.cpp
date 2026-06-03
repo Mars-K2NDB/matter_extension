@@ -5,9 +5,9 @@
 #include "CustomerAppTask.h"
 
 #include "AppConfig.h"
-#include "DeviceUserFlash.h"
-#include "LightOutput.h"
-#include "RgbcwStripDriver.h"
+#include "device_user_flash.h"
+#include "light_output.h"
+#include "rgbcw_strip_driver.h"
 
 #include <app/clusters/on-off-server/on-off-server.h>
 #include <app/reporting/reporting.h>
@@ -30,13 +30,13 @@ CustomerAppTask CustomerAppTask::sAppTask;
 
 namespace {
 
-bool sOutputsReady = false;
+bool outputs_ready_ = false;
 
-bool sHueSatApplyScheduled = false;
-EndpointId sHueSatApplyEndpoint = 0;
+bool hue_sat_apply_scheduled_ = false;
+EndpointId hue_sat_apply_endpoint_ = 0;
 
-bool sXyApplyScheduled = false;
-EndpointId sXyApplyEndpoint = 0;
+bool xy_apply_scheduled_ = false;
+EndpointId xy_apply_endpoint_ = 0;
 
 /*
  * Matter updateHueSatCommand 先写 CurrentHue 再写 CurrentSaturation。
@@ -45,8 +45,8 @@ EndpointId sXyApplyEndpoint = 0;
  */
 void HueSatApplyWork(intptr_t /*arg*/)
 {
-    sHueSatApplyScheduled = false;
-    if (!sOutputsReady)
+    hue_sat_apply_scheduled_ = false;
+    if (!outputs_ready_)
     {
         return;
     }
@@ -54,28 +54,28 @@ void HueSatApplyWork(intptr_t /*arg*/)
     uint8_t hue = 0;
     uint8_t sat = 0;
     PlatformMgr().LockChipStack();
-    ColorControl::Attributes::CurrentHue::Get(sHueSatApplyEndpoint, &hue);
-    ColorControl::Attributes::CurrentSaturation::Get(sHueSatApplyEndpoint, &sat);
+    ColorControl::Attributes::CurrentHue::Get(hue_sat_apply_endpoint_, &hue);
+    ColorControl::Attributes::CurrentSaturation::Get(hue_sat_apply_endpoint_, &sat);
     PlatformMgr().UnlockChipStack();
 
-    LightOutput::SetHueSat(hue, sat);
+    light_output::SetHueSat(hue, sat);
 }
 
 void ScheduleHueSatApply(EndpointId endpoint)
 {
-    sHueSatApplyEndpoint = endpoint;
-    if (sHueSatApplyScheduled)
+    hue_sat_apply_endpoint_ = endpoint;
+    if (hue_sat_apply_scheduled_)
     {
         return;
     }
-    sHueSatApplyScheduled = true;
+    hue_sat_apply_scheduled_ = true;
     (void) PlatformMgr().ScheduleWork(HueSatApplyWork, 0);
 }
 
 void XyApplyWork(intptr_t /*arg*/)
 {
-    sXyApplyScheduled = false;
-    if (!sOutputsReady)
+    xy_apply_scheduled_ = false;
+    if (!outputs_ready_)
     {
         return;
     }
@@ -83,21 +83,21 @@ void XyApplyWork(intptr_t /*arg*/)
     uint16_t currentX = 0;
     uint16_t currentY = 0;
     PlatformMgr().LockChipStack();
-    ColorControl::Attributes::CurrentX::Get(sXyApplyEndpoint, &currentX);
-    ColorControl::Attributes::CurrentY::Get(sXyApplyEndpoint, &currentY);
+    ColorControl::Attributes::CurrentX::Get(xy_apply_endpoint_, &currentX);
+    ColorControl::Attributes::CurrentY::Get(xy_apply_endpoint_, &currentY);
     PlatformMgr().UnlockChipStack();
 
-    LightOutput::SetXy(currentX, currentY);
+    light_output::SetXy(currentX, currentY);
 }
 
 void ScheduleXyApply(EndpointId endpoint)
 {
-    sXyApplyEndpoint = endpoint;
-    if (sXyApplyScheduled)
+    xy_apply_endpoint_ = endpoint;
+    if (xy_apply_scheduled_)
     {
         return;
     }
-    sXyApplyScheduled = true;
+    xy_apply_scheduled_ = true;
     (void) PlatformMgr().ScheduleWork(XyApplyWork, 0);
 }
 
@@ -109,22 +109,22 @@ void NotifyColorTempAttributeReports(EndpointId endpoint)
         ConcreteAttributePath(endpoint, ColorControl::Id, ColorControl::Attributes::RemainingTime::Id));
 }
 
-void PwmEventHandler(AppEvent * aEvent)
+void LightStripEventHandler(AppEvent* event)
 {
-    const auto & ev = aEvent->CtPwmEvent;
+    const auto& ev = event->light_strip_event;
 
-    switch (ev.Kind)
+    switch (ev.kind)
     {
-    case AppEvent::kCtPwmOn:
-        LightOutput::SetOn(ev.On);
+    case AppEvent::kOnOff:
+        light_output::SetOn(ev.on);
         break;
 
-    case AppEvent::kCtPwmLevel:
-        LightOutput::ApplyClusterLevel(LIGHT_ENDPOINT, ev.Level);
+    case AppEvent::kLevel:
+        light_output::ApplyClusterLevel(LIGHT_ENDPOINT, ev.level);
         break;
 
-    case AppEvent::kCtPwmCt:
-        LightOutput::SetColorTemperatureMireds(ev.CtMireds);
+    case AppEvent::kColorTemp:
+        light_output::SetColorTemperatureMireds(ev.ct_mireds);
         break;
 
     default:
@@ -132,14 +132,14 @@ void PwmEventHandler(AppEvent * aEvent)
     }
 }
 
-void PostPwmEvent(const AppEvent & eventTemplate)
+void PostLightStripEvent(const AppEvent& event_template)
 {
-    if (!sOutputsReady)
+    if (!outputs_ready_)
     {
         return;
     }
-    AppEvent event = eventTemplate;
-    event.Handler  = PwmEventHandler;
+    AppEvent event = event_template;
+    event.Handler  = LightStripEventHandler;
     CustomerAppTask::GetAppTask().PostEvent(&event);
 }
 
@@ -152,14 +152,14 @@ AppTask & AppTask::GetAppTask()
 
 CHIP_ERROR CustomerAppTask::InitLightImpl()
 {
-    const bool scheduleFactoryReset = DeviceUserFlash::ProcessPowerCycleReset();
+    const bool scheduleFactoryReset = device_user_flash::ProcessPowerCycleReset();
 
-    DeviceUserFlash::Init();
-    DeviceUserFlash::LoadSavedLightState();
+    device_user_flash::Init();
+    device_user_flash::LoadSavedLightState();
 
     ReturnErrorOnFailure(AppTask::InitLight());
 
-    LightOutput::Init();
+    light_output::Init();
 
     PlatformMgr().LockChipStack();
     using namespace chip::Protocols::InteractionModel;
@@ -173,24 +173,24 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
         ColorControl::Attributes::ColorCapabilities::Set(LIGHT_ENDPOINT, caps);
     }
 
-    DeviceUserFlash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);
+    device_user_flash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);
 
-    if (!DeviceUserFlash::HasPersistedLightState())
+    if (!device_user_flash::HasPersistedLightState())
     {
-        uint16_t ctMireds = 0;
-        if (ColorControl::Attributes::ColorTemperatureMireds::Get(LIGHT_ENDPOINT, &ctMireds) != Status::Success ||
-            ctMireds < LightOutput::kCtMinMireds || ctMireds > LightOutput::kCtMaxMireds)
+        uint16_t ct_mireds = 0;
+        if (ColorControl::Attributes::ColorTemperatureMireds::Get(LIGHT_ENDPOINT, &ct_mireds) != Status::Success ||
+            ct_mireds < light_output::kCtMinMireds || ct_mireds > light_output::kCtMaxMireds)
         {
-            ColorControl::Attributes::ColorTemperatureMireds::Set(LIGHT_ENDPOINT, LightOutput::kDefaultCtMireds);
+            ColorControl::Attributes::ColorTemperatureMireds::Set(LIGHT_ENDPOINT, light_output::kDefaultCtMireds);
         }
     }
     PlatformMgr().UnlockChipStack();
 
-    LightOutput::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
-    LightOutput::SetOn(false);
+    light_output::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
+    light_output::SetOn(false);
 
-    DeviceUserFlash::EnablePersistedLightStateSave();
-    sOutputsReady = true;
+    device_user_flash::EnablePersistedLightStateSave();
+    outputs_ready_ = true;
 
     if (scheduleFactoryReset)
     {
@@ -200,99 +200,104 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     return CHIP_NO_ERROR;
 }
 
-void CustomerAppTask::LightActionEventHandlerImpl(AppEvent * aEvent)
+void CustomerAppTask::LightActionEventHandlerImpl(AppEvent* event)
 {
-    bool wasOn = false;
+    bool was_on = false;
     PlatformMgr().LockChipStack();
-    OnOffServer::Instance().getOnOffValue(LIGHT_ENDPOINT, &wasOn);
+    OnOffServer::Instance().getOnOffValue(LIGHT_ENDPOINT, &was_on);
     PlatformMgr().UnlockChipStack();
 
-    AppTask::LightActionEventHandler(aEvent);
+    AppTask::LightActionEventHandler(event);
 
-    AppEvent event{};
-    event.Type            = AppEvent::kEventType_CtPwm;
-    event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-    event.CtPwmEvent.On   = !wasOn;
-    PostPwmEvent(event);
+    AppEvent strip_event{};
+    strip_event.Type                 = AppEvent::kEventType_LightStrip;
+    strip_event.light_strip_event.kind = AppEvent::kOnOff;
+    strip_event.light_strip_event.on   = !was_on;
+    PostLightStripEvent(strip_event);
 }
 
-void CustomerAppTask::LightTimerEventHandlerImpl(void * timerCbArg)
+void CustomerAppTask::LightTimerEventHandlerImpl(void* timer_cb_arg)
 {
-    AppTask::LightTimerEventHandler(timerCbArg);
+    AppTask::LightTimerEventHandler(timer_cb_arg);
 
-    AppEvent event{};
-    event.Type            = AppEvent::kEventType_CtPwm;
-    event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-    event.CtPwmEvent.On   = false;
-    PostPwmEvent(event);
+    AppEvent strip_event{};
+    strip_event.Type                 = AppEvent::kEventType_LightStrip;
+    strip_event.light_strip_event.kind = AppEvent::kOnOff;
+    strip_event.light_strip_event.on   = false;
+    PostLightStripEvent(strip_event);
 }
 
-void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::ConcreteAttributePath & attributePath, uint8_t type,
-                                                        uint16_t size, uint8_t * value)
+void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::ConcreteAttributePath& attribute_path,
+                                                        uint8_t type, uint16_t size, uint8_t* value)
 {
-    const ClusterId clusterId     = attributePath.mClusterId;
-    const AttributeId attributeId = attributePath.mAttributeId;
+    const ClusterId cluster_id     = attribute_path.mClusterId;
+    const AttributeId attribute_id = attribute_path.mAttributeId;
 
-    switch (clusterId)
+    switch (cluster_id)
     {
     case OnOff::Id:
-        if (attributeId == OnOff::Attributes::OnOff::Id && value != nullptr && size == sizeof(uint8_t))
+        if (attribute_id == OnOff::Attributes::OnOff::Id && value != nullptr && size == sizeof(uint8_t))
         {
-            AppEvent event{};
-            event.Type            = AppEvent::kEventType_CtPwm;
-            event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-            event.CtPwmEvent.On   = (*value != 0);
-            PostPwmEvent(event);
+            AppEvent strip_event{};
+            strip_event.Type                 = AppEvent::kEventType_LightStrip;
+            strip_event.light_strip_event.kind = AppEvent::kOnOff;
+            strip_event.light_strip_event.on   = (*value != 0);
+            PostLightStripEvent(strip_event);
         }
         break;
 
     case LevelControl::Id:
-        if (attributeId == LevelControl::Attributes::CurrentLevel::Id && value != nullptr && size == sizeof(uint8_t))
+        if (attribute_id == LevelControl::Attributes::CurrentLevel::Id && value != nullptr && size == sizeof(uint8_t))
         {
-            AppEvent event{};
-            event.Type             = AppEvent::kEventType_CtPwm;
-            event.CtPwmEvent.Kind  = AppEvent::kCtPwmLevel;
-            event.CtPwmEvent.Level = *value;
-            PostPwmEvent(event);
-            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
+            AppEvent strip_event{};
+            strip_event.Type                  = AppEvent::kEventType_LightStrip;
+            strip_event.light_strip_event.kind  = AppEvent::kLevel;
+            strip_event.light_strip_event.level = *value;
+            PostLightStripEvent(strip_event);
+            device_user_flash::UpdateLightStateFromAttributeChange(attribute_path.mEndpointId, cluster_id,
+                                                                   attribute_id);
         }
         break;
 
     case ColorControl::Id:
-        if (attributeId == ColorControl::Attributes::ColorTemperatureMireds::Id && value != nullptr &&
+        if (attribute_id == ColorControl::Attributes::ColorTemperatureMireds::Id && value != nullptr &&
             size == sizeof(uint16_t))
         {
-            AppEvent event{};
-            event.Type              = AppEvent::kEventType_CtPwm;
-            event.CtPwmEvent.Kind   = AppEvent::kCtPwmCt;
-            event.CtPwmEvent.CtMireds = *reinterpret_cast<uint16_t *>(value);
-            PostPwmEvent(event);
-            NotifyColorTempAttributeReports(attributePath.mEndpointId);
-            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
+            AppEvent strip_event{};
+            strip_event.Type                    = AppEvent::kEventType_LightStrip;
+            strip_event.light_strip_event.kind    = AppEvent::kColorTemp;
+            strip_event.light_strip_event.ct_mireds = *reinterpret_cast<uint16_t*>(value);
+            PostLightStripEvent(strip_event);
+            NotifyColorTempAttributeReports(attribute_path.mEndpointId);
+            device_user_flash::UpdateLightStateFromAttributeChange(attribute_path.mEndpointId, cluster_id,
+                                                                   attribute_id);
             return;
         }
-        if ((attributeId == ColorControl::Attributes::CurrentX::Id ||
-             attributeId == ColorControl::Attributes::CurrentY::Id) &&
+        if ((attribute_id == ColorControl::Attributes::CurrentX::Id ||
+             attribute_id == ColorControl::Attributes::CurrentY::Id) &&
             value != nullptr && size == sizeof(uint16_t))
         {
-            ScheduleXyApply(attributePath.mEndpointId);
-            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
+            ScheduleXyApply(attribute_path.mEndpointId);
+            device_user_flash::UpdateLightStateFromAttributeChange(attribute_path.mEndpointId, cluster_id,
+                                                                   attribute_id);
             return;
         }
-        if ((attributeId == ColorControl::Attributes::CurrentHue::Id ||
-             attributeId == ColorControl::Attributes::CurrentSaturation::Id) &&
+        if ((attribute_id == ColorControl::Attributes::CurrentHue::Id ||
+             attribute_id == ColorControl::Attributes::CurrentSaturation::Id) &&
             value != nullptr)
         {
-            ScheduleHueSatApply(attributePath.mEndpointId);
-            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
+            ScheduleHueSatApply(attribute_path.mEndpointId);
+            device_user_flash::UpdateLightStateFromAttributeChange(attribute_path.mEndpointId, cluster_id,
+                                                                   attribute_id);
             return;
         }
-        if (attributeId == ColorControl::Attributes::ColorMode::Id ||
-            attributeId == ColorControl::Attributes::EnhancedColorMode::Id)
+        if (attribute_id == ColorControl::Attributes::ColorMode::Id ||
+            attribute_id == ColorControl::Attributes::EnhancedColorMode::Id)
         {
-            MatterReportingAttributeChangeCallback(attributePath);
-            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
-            LightOutput::SyncFromMatterEndpoint(attributePath.mEndpointId);
+            MatterReportingAttributeChangeCallback(attribute_path);
+            device_user_flash::UpdateLightStateFromAttributeChange(attribute_path.mEndpointId, cluster_id,
+                                                                   attribute_id);
+            light_output::SyncFromMatterEndpoint(attribute_path.mEndpointId);
             return;
         }
         return;
@@ -301,5 +306,5 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
         break;
     }
 
-    AppTask::DMPostAttributeChangeCallback(attributePath, type, size, value);
+    AppTask::DMPostAttributeChangeCallback(attribute_path, type, size, value);
 }

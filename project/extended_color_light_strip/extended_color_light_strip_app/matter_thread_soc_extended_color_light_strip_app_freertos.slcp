@@ -20,9 +20,9 @@ readme:
 - path: README.md
 source:
 - path: src/CustomerAppTask.cpp
-- path: src/DeviceUserFlash.cpp
+- path: src/device_user_flash.cpp
 - path: src/main.cpp
-- path: src/RgbcwStripDriver.cpp
+- path: src/rgbcw_strip_driver.cpp
 - path: src/ws2814_strip_hal.cpp
 - path: src/color_format_mix.cpp
 include:
@@ -34,12 +34,12 @@ include:
 - path: include
   file_list:
   - path: CustomerAppTask.h
-  - path: RgbcwStripDriver.h
+  - path: rgbcw_strip_driver.h
   - path: ws2814_strip_hal.h
   - path: color_format_mix.h
   - path: ws2814_strip_config.h
-  - path: LightOutput.h
-  - path: DeviceUserFlash.h
+  - path: light_output.h
+  - path: device_user_flash.h
 sdk:
   vendor: silabs
   id: simplicity_sdk
