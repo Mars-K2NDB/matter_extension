@@ -369,20 +369,40 @@ void SaveLightStateFromMatter(EndpointId endpoint)
         s.ctMireds = ct;
     }
 
-    ColorControl::ColorModeEnum mode = ColorControl::ColorModeEnum::kColorTemperatureMireds;
-    if (ColorControl::Attributes::ColorMode::Get(endpoint, &mode) == Status::Success)
+    ColorControl::EnhancedColorModeEnum enhanced = ColorControl::EnhancedColorModeEnum::kColorTemperatureMireds;
+    if (ColorControl::Attributes::EnhancedColorMode::Get(endpoint, &enhanced) == Status::Success)
     {
-        switch (mode)
+        switch (enhanced)
         {
-        case ColorControl::ColorModeEnum::kCurrentHueAndCurrentSaturation:
+        case ColorControl::EnhancedColorModeEnum::kCurrentHueAndCurrentSaturation:
             s.colorMode = LightColorMode::kHsv;
             break;
-        case ColorControl::ColorModeEnum::kCurrentXAndCurrentY:
+        case ColorControl::EnhancedColorModeEnum::kCurrentXAndCurrentY:
             s.colorMode = LightColorMode::kXy;
             break;
+        case ColorControl::EnhancedColorModeEnum::kColorTemperatureMireds:
         default:
             s.colorMode = LightColorMode::kCt;
             break;
+        }
+    }
+    else
+    {
+        ColorControl::ColorModeEnum mode = ColorControl::ColorModeEnum::kColorTemperatureMireds;
+        if (ColorControl::Attributes::ColorMode::Get(endpoint, &mode) == Status::Success)
+        {
+            switch (mode)
+            {
+            case ColorControl::ColorModeEnum::kCurrentHueAndCurrentSaturation:
+                s.colorMode = LightColorMode::kHsv;
+                break;
+            case ColorControl::ColorModeEnum::kCurrentXAndCurrentY:
+                s.colorMode = LightColorMode::kXy;
+                break;
+            default:
+                s.colorMode = LightColorMode::kCt;
+                break;
+            }
         }
     }
 
@@ -416,7 +436,9 @@ void UpdateLightStateFromAttributeChange(EndpointId endpoint, ClusterId clusterI
           attributeId == ColorControl::Attributes::ColorMode::Id ||
           attributeId == ColorControl::Attributes::EnhancedColorMode::Id ||
           attributeId == ColorControl::Attributes::CurrentHue::Id ||
-          attributeId == ColorControl::Attributes::CurrentSaturation::Id));
+          attributeId == ColorControl::Attributes::CurrentSaturation::Id ||
+          attributeId == ColorControl::Attributes::CurrentX::Id ||
+          attributeId == ColorControl::Attributes::CurrentY::Id));
 
     if (!relevant)
     {

@@ -111,7 +111,7 @@ python3 project/scripts/build_light.py project/<产品>/...slcw -b brd2703a -s
 | 调光灯     | PB04                 | `SinglePwmDriver` → `sl_pwm_pwm0`                       |
 | 色温灯     | PB04 冷 / PB05 暖    | `CtDualPwmDriver` 按 `OUTPUT_PORT/PIN` 选冷/暖 PWM 实例 |
 | 五路 RGBCW | PC00/01/02 + PB04/05 | `RgbcwPwmDriver` 按引脚映射 R/G/B/C/W                   |
-| SPI 灯带   | SPI（无 PWM）        | `RgbcwStripDriver`（`SpiStripWrite` 仍为 TODO）         |
+| SPI 灯带   | EUSART1 TX（如 PC09） | `RgbcwStripDriver` + `ws2814_strip`（WS2814 SPI）         |
 
 ## 常用选项
 

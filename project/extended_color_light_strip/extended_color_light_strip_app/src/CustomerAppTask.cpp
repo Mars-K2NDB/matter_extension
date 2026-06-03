@@ -1,5 +1,5 @@
 /*
- * Matter Thread 五路 RGBCW PWM 灯。
+ * Matter Thread WS2814 SPI 幻彩灯带。
  */
 
 #include "CustomerAppTask.h"
@@ -7,10 +7,7 @@
 #include "AppConfig.h"
 #include "DeviceUserFlash.h"
 #include "LightOutput.h"
-#include "OvercurrentProtector.h"
 #include "RgbcwStripDriver.h"
-#include "ShortCircuitProtector.h"
-#include "VoltageAdcDriver.h"
 
 #include <app/clusters/on-off-server/on-off-server.h>
 #include <app/reporting/reporting.h>
@@ -35,6 +32,75 @@ namespace {
 
 bool sOutputsReady = false;
 
+bool sHueSatApplyScheduled = false;
+EndpointId sHueSatApplyEndpoint = 0;
+
+bool sXyApplyScheduled = false;
+EndpointId sXyApplyEndpoint = 0;
+
+/*
+ * Matter updateHueSatCommand 先写 CurrentHue 再写 CurrentSaturation。
+ * Hue 的 attribute 回调在 Saturation 写入之前同步执行，此时读到的 sat 是旧值，
+ * 会先发一帧错误颜色（例如 Hue=0 时 R≈253 G≈203 B≈202）。延迟到本轮 ZCL 写完后再读。
+ */
+void HueSatApplyWork(intptr_t /*arg*/)
+{
+    sHueSatApplyScheduled = false;
+    if (!sOutputsReady)
+    {
+        return;
+    }
+
+    uint8_t hue = 0;
+    uint8_t sat = 0;
+    PlatformMgr().LockChipStack();
+    ColorControl::Attributes::CurrentHue::Get(sHueSatApplyEndpoint, &hue);
+    ColorControl::Attributes::CurrentSaturation::Get(sHueSatApplyEndpoint, &sat);
+    PlatformMgr().UnlockChipStack();
+
+    LightOutput::SetHueSat(hue, sat);
+}
+
+void ScheduleHueSatApply(EndpointId endpoint)
+{
+    sHueSatApplyEndpoint = endpoint;
+    if (sHueSatApplyScheduled)
+    {
+        return;
+    }
+    sHueSatApplyScheduled = true;
+    (void) PlatformMgr().ScheduleWork(HueSatApplyWork, 0);
+}
+
+void XyApplyWork(intptr_t /*arg*/)
+{
+    sXyApplyScheduled = false;
+    if (!sOutputsReady)
+    {
+        return;
+    }
+
+    uint16_t currentX = 0;
+    uint16_t currentY = 0;
+    PlatformMgr().LockChipStack();
+    ColorControl::Attributes::CurrentX::Get(sXyApplyEndpoint, &currentX);
+    ColorControl::Attributes::CurrentY::Get(sXyApplyEndpoint, &currentY);
+    PlatformMgr().UnlockChipStack();
+
+    LightOutput::SetXy(currentX, currentY);
+}
+
+void ScheduleXyApply(EndpointId endpoint)
+{
+    sXyApplyEndpoint = endpoint;
+    if (sXyApplyScheduled)
+    {
+        return;
+    }
+    sXyApplyScheduled = true;
+    (void) PlatformMgr().ScheduleWork(XyApplyWork, 0);
+}
+
 void NotifyColorTempAttributeReports(EndpointId endpoint)
 {
     MatterReportingAttributeChangeCallback(
@@ -50,10 +116,6 @@ void PwmEventHandler(AppEvent * aEvent)
     switch (ev.Kind)
     {
     case AppEvent::kCtPwmOn:
-        if (ev.On && OvercurrentProtector::BlocksTurnOn())
-        {
-            break;
-        }
         LightOutput::SetOn(ev.On);
         break;
 
@@ -90,10 +152,7 @@ AppTask & AppTask::GetAppTask()
 
 CHIP_ERROR CustomerAppTask::InitLightImpl()
 {
-    if (DeviceUserFlash::ProcessPowerCycleReset())
-    {
-        return CHIP_NO_ERROR;
-    }
+    const bool scheduleFactoryReset = DeviceUserFlash::ProcessPowerCycleReset();
 
     DeviceUserFlash::Init();
     DeviceUserFlash::LoadSavedLightState();
@@ -101,10 +160,6 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     ReturnErrorOnFailure(AppTask::InitLight());
 
     LightOutput::Init();
-    VoltageAdcDriver::Init();
-    OvercurrentProtector::Init();
-    ShortCircuitProtector::Init();
-    VoltageAdcDriver::StartPeriodicSampling();
 
     PlatformMgr().LockChipStack();
     using namespace chip::Protocols::InteractionModel;
@@ -137,6 +192,11 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     DeviceUserFlash::EnablePersistedLightStateSave();
     sOutputsReady = true;
 
+    if (scheduleFactoryReset)
+    {
+        ChipLogProgress(DeviceLayer, "Factory reset scheduled; light outputs remain usable until reset");
+    }
+
     return CHIP_NO_ERROR;
 }
 
@@ -149,14 +209,11 @@ void CustomerAppTask::LightActionEventHandlerImpl(AppEvent * aEvent)
 
     AppTask::LightActionEventHandler(aEvent);
 
-    if (!OvercurrentProtector::IsFaultActive())
-    {
-        AppEvent event{};
-        event.Type            = AppEvent::kEventType_CtPwm;
-        event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
-        event.CtPwmEvent.On   = !wasOn;
-        PostPwmEvent(event);
-    }
+    AppEvent event{};
+    event.Type            = AppEvent::kEventType_CtPwm;
+    event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
+    event.CtPwmEvent.On   = !wasOn;
+    PostPwmEvent(event);
 }
 
 void CustomerAppTask::LightTimerEventHandlerImpl(void * timerCbArg)
@@ -181,16 +238,6 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
     case OnOff::Id:
         if (attributeId == OnOff::Attributes::OnOff::Id && value != nullptr && size == sizeof(uint8_t))
         {
-            if (OvercurrentProtector::IsFaultActive() && *value != 0)
-            {
-                PlatformMgr().LockChipStack();
-                OnOffServer::Instance().setOnOffValue(LIGHT_ENDPOINT, 0, false);
-                MatterReportingAttributeChangeCallback(
-                    ConcreteAttributePath(LIGHT_ENDPOINT, OnOff::Id, OnOff::Attributes::OnOff::Id));
-                PlatformMgr().UnlockChipStack();
-                return;
-            }
-
             AppEvent event{};
             event.Type            = AppEvent::kEventType_CtPwm;
             event.CtPwmEvent.Kind = AppEvent::kCtPwmOn;
@@ -224,25 +271,19 @@ void CustomerAppTask::DMPostAttributeChangeCallbackImpl(const chip::app::Concret
             DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
             return;
         }
+        if ((attributeId == ColorControl::Attributes::CurrentX::Id ||
+             attributeId == ColorControl::Attributes::CurrentY::Id) &&
+            value != nullptr && size == sizeof(uint16_t))
+        {
+            ScheduleXyApply(attributePath.mEndpointId);
+            DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
+            return;
+        }
         if ((attributeId == ColorControl::Attributes::CurrentHue::Id ||
              attributeId == ColorControl::Attributes::CurrentSaturation::Id) &&
             value != nullptr)
         {
-            uint8_t hue = 0;
-            uint8_t sat = 0;
-            PlatformMgr().LockChipStack();
-            ColorControl::Attributes::CurrentHue::Get(attributePath.mEndpointId, &hue);
-            ColorControl::Attributes::CurrentSaturation::Get(attributePath.mEndpointId, &sat);
-            PlatformMgr().UnlockChipStack();
-            if (attributeId == ColorControl::Attributes::CurrentHue::Id && size == sizeof(uint8_t))
-            {
-                hue = *value;
-            }
-            if (attributeId == ColorControl::Attributes::CurrentSaturation::Id && size == sizeof(uint8_t))
-            {
-                sat = *value;
-            }
-            LightOutput::SetHueSat(hue, sat);
+            ScheduleHueSatApply(attributePath.mEndpointId);
             DeviceUserFlash::UpdateLightStateFromAttributeChange(attributePath.mEndpointId, clusterId, attributeId);
             return;
         }

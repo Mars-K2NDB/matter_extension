@@ -8,6 +8,7 @@ inline void Init() { RgbcwStripDriver::Init(); }
 inline void SetOn(bool on) { RgbcwStripDriver::SetOn(on); }
 inline void SetLevel(uint8_t level) { RgbcwStripDriver::SetLevel(level); }
 inline void SetHueSat(uint8_t h, uint8_t s) { RgbcwStripDriver::SetHueSat(h, s); }
+inline void SetXy(uint16_t x, uint16_t y) { RgbcwStripDriver::SetXy(x, y); }
 inline void SetColorTemperatureMireds(uint16_t m) { RgbcwStripDriver::SetColorTemperatureMireds(m); }
 inline void ApplyClusterLevel(chip::EndpointId ep, uint8_t level) { RgbcwStripDriver::ApplyClusterLevel(ep, level); }
 inline void SyncFromMatterEndpoint(chip::EndpointId ep) { RgbcwStripDriver::SyncFromMatterEndpoint(ep); }
