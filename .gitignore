@@ -34,6 +34,13 @@ slc/tools/
 **/.uceditor/
 **/.slc_state/
 
+# SLC autogen outputs that should not be committed (regenerate via slc generate / build)
+**/autogen/linkerfile.ld
+**/autogen/linkerfile.icf
+**/autogen/sbom/
+**/autogen/gen.properties
+**/autogen/.slc_state/
+
 # Pigweed Environment
 .environment/
 build_overrides/pigweed_environment.gni
