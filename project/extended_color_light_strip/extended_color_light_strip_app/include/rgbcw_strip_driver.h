@@ -29,6 +29,8 @@ public:
     static void SyncFromMatterEndpoint(chip::EndpointId endpoint);
     static void ForceOffForFault();
     static void ForceOffForFaultFromIsr();
+    /** 停止渐变定时器，供灯效引擎接管 SPI 输出 */
+    static void HaltFadeAnimation();
     static void RecoverFromFault();
     static void RestoreToPreFault(bool on, uint8_t level, uint16_t ct_mireds);
     static bool GetPreFaultState(bool& on, uint8_t& level, uint16_t& ct_mireds);

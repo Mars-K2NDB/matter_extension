@@ -5,9 +5,12 @@
 #include "CustomerAppTask.h"
 
 #include "AppConfig.h"
+#include "AppTask.h"
+#include "BaseApplication.h"
 #include "device_user_flash.h"
 #include "light_output.h"
 #include "rgbcw_strip_driver.h"
+#include "ws2814_strip_effects.h"
 
 #include <app/clusters/on-off-server/on-off-server.h>
 #include <app/reporting/reporting.h>
@@ -19,18 +22,80 @@
 #include <lib/support/BitMask.h>
 #include <lib/support/logging/CHIPLogging.h>
 #include <platform/CHIPDeviceLayer.h>
+#include <platform/silabs/platformAbstraction/SilabsPlatform.h>
 #include <protocols/interaction_model/StatusCode.h>
 
 using namespace chip;
 using namespace chip::app;
 using namespace chip::app::Clusters;
 using namespace chip::DeviceLayer;
+using namespace ::chip::DeviceLayer::Silabs;
 
 CustomerAppTask CustomerAppTask::sAppTask;
 
 namespace {
 
+/** 与 autogen/AppTask.cpp 中定义一致：0=BTN0，1=BTN1 */
+constexpr uint8_t kAppFunctionButton = 0;
+constexpr uint8_t kAppLightSwitch    = 1;
+
 bool outputs_ready_ = false;
+uint8_t s_current_effect_index = 0;
+
+bool IsNetworkProvisioned()
+{
+    /* 与 BaseApplication::ButtonHandler 中 “already provisioned” 判断一致 */
+    return BaseApplication::sIsProvisioned;
+}
+
+/** 与 Telink ButtonFunction::GetNextEffectIndex 一致，跳过 kRainbow */
+uint8_t GetNextEffectIndex(uint8_t current_index)
+{
+    const uint8_t max_modes = static_cast<uint8_t>(ws2814_effects::Mode::kCount);
+    uint8_t next_index      = static_cast<uint8_t>((current_index + 1) % max_modes);
+    if (next_index == static_cast<uint8_t>(ws2814_effects::Mode::kRainbow))
+    {
+        next_index = static_cast<uint8_t>((next_index + 1) % max_modes);
+    }
+    return next_index;
+}
+
+/**
+ * 已配网时 BTN0 松开：切换灯效（对齐 Telink EffectSwitchHandler）。
+ * 灯关时仅更新索引；灯开时 ws2814_effect_start。
+ */
+void HandleProvisionedStripEffectSwitch()
+{
+    if (!outputs_ready_)
+    {
+        ChipLogProgress(AppServer, "Strip effect: outputs not ready");
+        return;
+    }
+
+    bool light_on = false;
+    PlatformMgr().LockChipStack();
+    OnOffServer::Instance().getOnOffValue(LIGHT_ENDPOINT, &light_on);
+    PlatformMgr().UnlockChipStack();
+
+    s_current_effect_index = GetNextEffectIndex(s_current_effect_index);
+
+    if (!light_on)
+    {
+        (void) light_output::StopStripEffect();
+        ChipLogProgress(AppServer, "Light off, effect index only: %u (%s)", s_current_effect_index,
+                        ws2814_effects::GetModeName(static_cast<ws2814_effects::Mode>(s_current_effect_index)));
+        return;
+    }
+
+    const auto mode = static_cast<ws2814_effects::Mode>(s_current_effect_index);
+    if (!light_output::StartStripEffect(mode, 128, 128))
+    {
+        ChipLogError(AppServer, "Strip effect start failed: %s", ws2814_effects::GetModeName(mode));
+        return;
+    }
+
+    ChipLogProgress(AppServer, "Strip effect: %s", ws2814_effects::GetModeName(mode));
+}
 
 bool hue_sat_apply_scheduled_ = false;
 EndpointId hue_sat_apply_endpoint_ = 0;
@@ -127,9 +192,28 @@ void LightStripEventHandler(AppEvent* event)
         light_output::SetColorTemperatureMireds(ev.ct_mireds);
         break;
 
+    case AppEvent::kStripEffectSwitch:
+        if (IsNetworkProvisioned())
+        {
+            HandleProvisionedStripEffectSwitch();
+        }
+        break;
+
     default:
         break;
     }
+}
+
+/*
+ * BTN0 回调在中断上下文：仅 PostEvent，在 AppTask 线程执行灯效（同 Telink EffectSwitchButtonEventHandler）。
+ */
+void PostProvisionedStripEffectSwitchEvent()
+{
+    AppEvent event{};
+    event.Type                   = AppEvent::kEventType_LightStrip;
+    event.light_strip_event.kind = AppEvent::kStripEffectSwitch;
+    event.Handler                = LightStripEventHandler;
+    CustomerAppTask::GetAppTask().PostEvent(&event);
 }
 
 void PostLightStripEvent(const AppEvent& event_template)
@@ -200,12 +284,38 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     return CHIP_NO_ERROR;
 }
 
+void CustomerAppTask::ButtonEventHandlerImpl(uint8_t button, uint8_t btnAction)
+{
+    if (button == kAppFunctionButton)
+    {
+        AppEvent button_event{};
+        button_event.Type                 = AppEvent::kEventType_Button;
+        button_event.ButtonEvent.Action   = btnAction;
+        button_event.Handler            = BaseApplication::ButtonHandler;
+        GetAppTask().PostEvent(&button_event);
+
+        /* 与 BaseApplication 一致：松开时处理（按下仅启动长按计时） */
+        if (btnAction == static_cast<uint8_t>(SilabsPlatform::ButtonAction::ButtonReleased) && IsNetworkProvisioned())
+        {
+            PostProvisionedStripEffectSwitchEvent();
+        }
+        return;
+    }
+
+    AppTask::ButtonEventHandler(button, btnAction);
+}
+
 void CustomerAppTask::LightActionEventHandlerImpl(AppEvent* event)
 {
     bool was_on = false;
     PlatformMgr().LockChipStack();
     OnOffServer::Instance().getOnOffValue(LIGHT_ENDPOINT, &was_on);
     PlatformMgr().UnlockChipStack();
+
+    if (was_on)
+    {
+        (void) light_output::StopStripEffect();
+    }
 
     AppTask::LightActionEventHandler(event);
 

@@ -25,6 +25,7 @@ source:
 - path: src/rgbcw_strip_driver.cpp
 - path: src/ws2814_strip_hal.cpp
 - path: src/color_format_mix.cpp
+- path: src/ws2814_strip_effects.cpp
 include:
 - path: include
   file_list:
@@ -38,6 +39,7 @@ include:
   - path: ws2814_strip_hal.h
   - path: color_format_mix.h
   - path: ws2814_strip_config.h
+  - path: ws2814_strip_effects.h
   - path: light_output.h
   - path: device_user_flash.h
 sdk:

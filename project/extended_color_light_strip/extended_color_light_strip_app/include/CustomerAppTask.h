@@ -43,6 +43,7 @@ private:
     friend class AppTaskImpl<CustomerAppTask>;
 
     CHIP_ERROR InitLightImpl();
+    void ButtonEventHandlerImpl(uint8_t button, uint8_t btnAction);
     void LightActionEventHandlerImpl(AppEvent* event);
     void LightTimerEventHandlerImpl(void* timer_cb_arg);
     void DMPostAttributeChangeCallbackImpl(const chip::app::ConcreteAttributePath& attribute_path, uint8_t type,

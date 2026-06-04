@@ -34,9 +34,10 @@ struct AppEvent : public BaseAppEvent
 
     enum LightStripEventKind : uint8_t
     {
-        kOnOff     = 0,
-        kLevel     = 1,
-        kColorTemp = 2,
+        kOnOff            = 0,
+        kLevel            = 1,
+        kColorTemp        = 2,
+        kStripEffectSwitch = 3,
     };
 
     union

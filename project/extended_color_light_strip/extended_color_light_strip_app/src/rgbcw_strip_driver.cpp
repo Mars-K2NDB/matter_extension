@@ -6,6 +6,7 @@
 
 #include "AppConfig.h"
 #include "color_format_mix.h"
+#include "ws2814_strip_effects.h"
 #include "ws2814_strip_hal.h"
 #include "ws2814_strip_config.h"
 
@@ -277,6 +278,11 @@ void RgbcwStripDriver::ApplyRgbwLumaCompensation(Rgbw1024& current, const Rgbw10
 
 void RgbcwStripDriver::ApplyDisplayOutput(const Rgbw1024& rgbw)
 {
+    if (ws2814_effects::IsRunning())
+    {
+        return;
+    }
+
     const bool allOff = (rgbw.r == 0 && rgbw.g == 0 && rgbw.b == 0 && rgbw.w == 0);
     ws2814_strip::ControlRgbw(rgbw.r, rgbw.g, rgbw.b, rgbw.w);
 #if WS2814_OFF_FRAME_REPEAT > 1
@@ -604,8 +610,14 @@ void RgbcwStripDriver::SyncFromMatterEndpoint(chip::EndpointId endpoint)
     ApplyOutputImmediate();
 }
 
+void RgbcwStripDriver::HaltFadeAnimation()
+{
+    CancelFadeTimer();
+}
+
 void RgbcwStripDriver::ForceOffForFault()
 {
+    (void) ws2814_effects::Stop();
     CancelFadeTimer();
     on_ = false;
     display_ = {};

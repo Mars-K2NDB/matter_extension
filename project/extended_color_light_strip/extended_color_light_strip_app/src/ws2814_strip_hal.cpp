@@ -200,30 +200,48 @@ bool Init()
     return ControlRgbw(0, 0, 0, 0);
 }
 
-bool ControlRgbw(uint16_t red, uint16_t green, uint16_t blue, uint16_t white)
+bool FlushPixels(const WrgbPixel* pixels, uint16_t count)
 {
     if (!g_initialized && !Init())
     {
         return false;
     }
 
-    const uint8_t sr = static_cast<uint8_t>((static_cast<uint32_t>(red) * 255U) / STRIP_LEVEL_MAX);
-    const uint8_t sg = static_cast<uint8_t>((static_cast<uint32_t>(green) * 255U) / STRIP_LEVEL_MAX);
-    const uint8_t sb = static_cast<uint8_t>((static_cast<uint32_t>(blue) * 255U) / STRIP_LEVEL_MAX);
-    const uint8_t sw = static_cast<uint8_t>((static_cast<uint32_t>(white) * 255U) / STRIP_LEVEL_MAX);
+    if (pixels == nullptr || count == 0)
+    {
+        return false;
+    }
+
+    if (count > WS2814_LED_COUNT)
+    {
+        count = WS2814_LED_COUNT;
+    }
 
     FillFrameIdleRegions();
 
     size_t offset = WS2814_FRAME_PAYLOAD_OFFSET;
-    for (uint16_t i = 0; i < WS2814_LED_COUNT; ++i)
+    for (uint16_t i = 0; i < count; ++i)
     {
-        EncodeChannelMsb(sw, &g_tx_frame[offset]);
+        const WrgbPixel& px = pixels[i];
+        EncodeChannelMsb(px.w, &g_tx_frame[offset]);
         offset += WS2814_BYTES_PER_CHANNEL;
-        EncodeChannelMsb(sr, &g_tx_frame[offset]);
+        EncodeChannelMsb(px.r, &g_tx_frame[offset]);
         offset += WS2814_BYTES_PER_CHANNEL;
-        EncodeChannelMsb(sg, &g_tx_frame[offset]);
+        EncodeChannelMsb(px.g, &g_tx_frame[offset]);
         offset += WS2814_BYTES_PER_CHANNEL;
-        EncodeChannelMsb(sb, &g_tx_frame[offset]);
+        EncodeChannelMsb(px.b, &g_tx_frame[offset]);
+        offset += WS2814_BYTES_PER_CHANNEL;
+    }
+
+    for (uint16_t i = count; i < WS2814_LED_COUNT; ++i)
+    {
+        EncodeChannelMsb(0, &g_tx_frame[offset]);
+        offset += WS2814_BYTES_PER_CHANNEL;
+        EncodeChannelMsb(0, &g_tx_frame[offset]);
+        offset += WS2814_BYTES_PER_CHANNEL;
+        EncodeChannelMsb(0, &g_tx_frame[offset]);
+        offset += WS2814_BYTES_PER_CHANNEL;
+        EncodeChannelMsb(0, &g_tx_frame[offset]);
         offset += WS2814_BYTES_PER_CHANNEL;
     }
 
@@ -235,6 +253,22 @@ bool ControlRgbw(uint16_t red, uint16_t green, uint16_t blue, uint16_t white)
     }
 
     return SpiTransmitBufferUninterrupted(g_tx_frame.data(), g_tx_frame.size());
+}
+
+bool ControlRgbw(uint16_t red, uint16_t green, uint16_t blue, uint16_t white)
+{
+    const uint8_t sr = static_cast<uint8_t>((static_cast<uint32_t>(red) * 255U) / STRIP_LEVEL_MAX);
+    const uint8_t sg = static_cast<uint8_t>((static_cast<uint32_t>(green) * 255U) / STRIP_LEVEL_MAX);
+    const uint8_t sb = static_cast<uint8_t>((static_cast<uint32_t>(blue) * 255U) / STRIP_LEVEL_MAX);
+    const uint8_t sw = static_cast<uint8_t>((static_cast<uint32_t>(white) * 255U) / STRIP_LEVEL_MAX);
+
+    const WrgbPixel uniform{ sw, sr, sg, sb };
+    WrgbPixel pixels[WS2814_LED_COUNT];
+    for (uint16_t i = 0; i < WS2814_LED_COUNT; ++i)
+    {
+        pixels[i] = uniform;
+    }
+    return FlushPixels(pixels, WS2814_LED_COUNT);
 }
 
 } // namespace ws2814_strip

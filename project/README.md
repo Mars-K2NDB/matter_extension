@@ -14,7 +14,7 @@
 | `dimmable_light`             | PB4                         |
 | `colortemperature_light`     | PB4 冷 / PB5 暖             |
 | `extended_color_light`       | PC0–PC2 (RGB), PB4–PB5 (CW) |
-| `extended_color_light_strip` | SPI 幻彩灯带（无 PWM）      |
+| `extended_color_light_strip` | SPI 幻彩灯带（WS2814，69 颗，内置 15 种灯效） |
 
 ## 脚本目录
 
