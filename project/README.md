@@ -18,7 +18,7 @@
 
 ## 脚本目录
 
-`project/scripts/` 为迁移工具，**不参与编译**；详见 [scripts/README.md](scripts/README.md)。
+`project/scripts/` 为迁移工具，**不参与编译**（说明见下文）。
 
 - `setup_light_projects.py` — 从 `lighting_mot` 同步并部署 `templates/` 驱动与覆盖
 - `patch_pwm_configs.py` / `patch_pintools.py` — 可选，批量恢复引脚配置
@@ -55,6 +55,8 @@ python3 project/scripts/setup_light_projects.py
 在**仓库根目录**使用 `build.sh`（内部调用 `slc/sl_build.py`）：
 
 ```bash
+source ./build.sh                  # 列出项目并在当前终端启用 Tab 补全（每新开终端执行一次）
+./build.sh list                    # 仅列出可编译项目
 ./build.sh dimmable_light
 ./build.sh colortemperature_light
 ./build.sh extended_color_light

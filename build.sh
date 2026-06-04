@@ -1,24 +1,23 @@
 #!/usr/bin/env bash
 #
-# project/ 下 Matter 照明工程的交互编译与清理脚本（Linux）。
+# project/ 下 Matter 照明工程的编译与清理脚本（Linux）。
 #
 # 用法:
-#   ./build.sh <项目目录名>              # 编译，如 ./build.sh colortemperature_light
+#   ./build.sh <项目目录名>              # 编译
 #   ./build.sh clean <项目目录名>        # 清除编译产物
 #   ./build.sh clean all                 # 清除全部项目
 #   ./build.sh rebuild <项目目录名>      # 跳过 SLC generate，仅重编译
-#   ./build.sh list                      # 列出可编译项目
-#   ./build.sh --bash-completion         # 输出 Tab 补全定义
+#   ./build.sh list                      # 列出 project/ 下可编译项目
+#   ./build.sh                           # 无参数：列出 project/ 项目
+#   source ./build.sh                    # 无参数：列出项目并在当前 shell 安装 Tab 补全
+#   ./build.sh --bash-completion         # 输出 Tab 补全定义（供 eval 使用）
 #
 # 环境变量:
 #   BOARD   开发板名称，默认 brd2703a
 #   JOBS    并行编译任务数（传给 slc/sl_build.py -j）
-#
-# Tab 补全: eval "$(./build.sh --bash-completion)"
-
-set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BUILD_INVOKER="$(basename "${BASH_SOURCE[0]}")"
 PROJECT_DIR="${REPO_ROOT}/project"
 SL_BUILD="${REPO_ROOT}/slc/sl_build.py"
 DEFAULT_BOARD="${BOARD:-brd2703a}"
@@ -33,6 +32,7 @@ declare -A PROJECT_LABEL=(
 PROJECT_NAMES=()
 PROJECT_SLCW=()
 
+# 已知项目显示顺序（仅排序；未列出的目录只要含 .slcw 也会被发现）
 PROJECT_ORDER=(
 	dimmable_light
 	colortemperature_light
@@ -40,20 +40,51 @@ PROJECT_ORDER=(
 	extended_color_light_strip
 )
 
+# project/ 下不参与编译的目录名
+PROJECT_SKIP_DIRS=(scripts)
+
+is_skipped_project_dir() {
+	local name="$1"
+	local skip
+	for skip in "${PROJECT_SKIP_DIRS[@]}"; do
+		if [[ "$name" == "$skip" ]]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+# 在 project/<name>/ 下查找顶层 solution（*.slcw）
+find_project_slcw() {
+	local pdir="$1"
+	local slcw
+	slcw="$(find "$pdir" -maxdepth 1 -name '*.slcw' -print -quit 2>/dev/null || true)"
+	if [[ -n "$slcw" && -f "$slcw" ]]; then
+		echo "$slcw"
+		return 0
+	fi
+	return 1
+}
+
+# 扫描 project/ 子目录，索引所有含 .slcw 的可编译工程
 discover_projects() {
 	PROJECT_NAMES=()
 	PROJECT_SLCW=()
 	local name d slcw extra=()
 	local -A slcw_map=()
 
+	if [[ ! -d "$PROJECT_DIR" ]]; then
+		return 0
+	fi
+
 	for d in "${PROJECT_DIR}"/*/; do
 		[[ -d "$d" ]] || continue
 		name="$(basename "$d")"
-		if [[ "$name" == "scripts" ]]; then
+		if is_skipped_project_dir "$name"; then
 			continue
 		fi
-		slcw="$(find "$d" -maxdepth 1 -name '*.slcw' -print -quit 2>/dev/null || true)"
-		if [[ -n "$slcw" && -f "$slcw" ]]; then
+		slcw="$(find_project_slcw "$d" || true)"
+		if [[ -n "$slcw" ]]; then
 			slcw_map["$name"]="$slcw"
 		fi
 	done
@@ -121,8 +152,30 @@ print_project_list() {
 		printf "      %s\n" "${slcw#${REPO_ROOT}/}"
 	done
 	echo ""
-	echo "编译: $(basename "$0") <项目名>"
-	echo "清除: $(basename "$0") clean <项目名>"
+	echo "编译: ./${BUILD_INVOKER} <项目名>"
+	echo "清除: ./${BUILD_INVOKER} clean <项目名>"
+}
+
+# 无参数：列出项目；source 时在本 shell 安装 Tab 补全
+build_sh_list_and_complete() {
+	local sourced=0
+	if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+		sourced=1
+	fi
+	print_project_list
+	if [[ $sourced -eq 1 ]]; then
+		if [[ -t 0 ]]; then
+			install_bash_completion || true
+			echo "已在本终端启用 ./${BUILD_INVOKER} Tab 补全"
+		fi
+		return 0
+	fi
+	if [[ -t 0 ]]; then
+		echo ""
+		echo "本会话启用 Tab 补全: source ./${BUILD_INVOKER}"
+		echo "或: eval \"\$(./${BUILD_INVOKER} --bash-completion)\""
+	fi
+	return 0
 }
 
 clean_product_dir() {
@@ -245,55 +298,24 @@ usage() {
 EOF
 }
 
-interactive_menu() {
-	local action target board jobs="${JOBS:-}"
-
-	print_project_list
-	echo "操作: [build]编译  [rebuild]仅重编译  [clean]清除  [q]退出"
-	read -r -p "操作 [build]: " action
-	action="${action:-build}"
-
-	case "$action" in
-	q | Q | 0)
+install_bash_completion() {
+	if [[ -z "${BASH_VERSION:-}" ]]; then
 		return 0
-		;;
-	build | b | B | "")
-		action=build
-		;;
-	rebuild | r | R)
-		action=rebuild
-		;;
-	clean | c | C)
-		action=clean
-		;;
-	*)
-		echo "无效操作: $action" >&2
-		return 1
-		;;
-	esac
+	fi
+	# shellcheck disable=SC1090
+	eval "$(emit_bash_completion)"
+}
 
-	read -r -p "项目目录名 (clean 可用 all): " target
-	if [[ -z "${target:-}" ]]; then
-		echo "未指定项目" >&2
+# source 时仅列出项目并安装 Tab 补全（禁止 exit，避免关闭当前终端）
+build_sh_source_init() {
+	discover_projects
+	if [[ ${#PROJECT_NAMES[@]} -eq 0 ]]; then
+		echo "在 ${PROJECT_DIR} 下未找到可编译工程（各子目录需含顶层 *.slcw）" >&2
+		echo "可先执行: python3 project/scripts/setup_light_projects.py" >&2
 		return 1
 	fi
-
-	if [[ "$action" != "clean" ]]; then
-		read -r -p "开发板 [${DEFAULT_BOARD}]: " board
-		board="${board:-$DEFAULT_BOARD}"
-	fi
-
-	case "$action" in
-	build)
-		build_project "$target" false "${board:-$DEFAULT_BOARD}" "$jobs"
-		;;
-	rebuild)
-		build_project "$target" true "${board:-$DEFAULT_BOARD}" "$jobs"
-		;;
-	clean)
-		clean_projects "$target"
-		;;
-	esac
+	build_sh_list_and_complete
+	return 0
 }
 
 emit_bash_completion() {
@@ -369,14 +391,15 @@ main() {
 
 	discover_projects
 	if [[ ${#PROJECT_NAMES[@]} -eq 0 ]]; then
-		echo "在 ${PROJECT_DIR} 下未找到 .slcw 工程" >&2
+		echo "在 ${PROJECT_DIR} 下未找到可编译工程（各子目录需含顶层 *.slcw）" >&2
+		echo "可先执行: python3 project/scripts/setup_light_projects.py" >&2
 		exit 1
 	fi
 
 	local cmd="${1:-}"
 	if [[ -z "$cmd" ]]; then
-		interactive_menu
-		exit $?
+		build_sh_list_and_complete
+		exit 0
 	fi
 
 	shift || true
@@ -389,10 +412,6 @@ main() {
 	list | ls)
 		print_project_list
 		exit 0
-		;;
-	menu | -i | --interactive)
-		interactive_menu
-		exit $?
 		;;
 	clean)
 		local target="${1:-}"
@@ -449,4 +468,10 @@ main() {
 	esac
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+	set -euo pipefail
+	main "$@"
+else
+	build_sh_source_init
+	return $?
+fi
