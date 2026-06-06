@@ -1,0 +1,52 @@
+!!omap
+- id: rf_bm_mg24b1_config
+- label: RF-BM-MG24B1 config
+- description: Configuration files for RF-BM-MG24B1 module carrier
+- package: matter
+- category: Platform|Board|Config
+- quality: production
+- metadata:
+    sbom:
+      license: Zlib
+- ui_hints:
+    visibility: never
+- root_path: slc/component/board-support
+- requires:
+  - name: rf_bm_mg24b1
+- provides:
+  - name: rf_bm_mg24b1_config
+- config_file:
+  - override:
+      component: board_control
+      file_id: board_control_config
+      vendor: silabs
+    path: rf_bm_mg24b1/sl_board_control_config.h
+  - override:
+      component: clock_manager
+      file_id: clock_manager_oscillator_config
+      vendor: silabs
+    path: rf_bm_mg24b1/sl_clock_manager_oscillator_config.h
+  - override:
+      component: simple_button
+      file_id: simple_button_config
+      instance: btn0
+      vendor: silabs
+    path: rf_bm_mg24b1/sl_simple_button_btn0_config.h
+  - override:
+      component: simple_button
+      file_id: simple_button_config
+      instance: btn1
+      vendor: silabs
+    path: rf_bm_mg24b1/sl_simple_button_btn1_config.h
+  - override:
+      component: simple_led
+      file_id: simple_led_config
+      instance: led0
+      vendor: silabs
+    path: rf_bm_mg24b1/sl_simple_led_led0_config.h
+  - override:
+      component: simple_led
+      file_id: simple_led_config
+      instance: led1
+      vendor: silabs
+    path: rf_bm_mg24b1/sl_simple_led_led1_config.h

@@ -1,4 +1,3 @@
-# Silicon Labs Project Configuration Tools: slcp, v0, Component selection file.
 project_name: matter_thread_soc_extended_color_light_strip_app_freertos
 label: Matter Thread - SoC Extended Color Light Strip FreeRTOS
 description: Demonstrates a sample implementation of a Matter over Thread extended
@@ -181,9 +180,6 @@ component:
   id: matter_user_label
 - package: simplicity_sdk
   vendor: silabs
-  id: brd2703a
-- package: simplicity_sdk
-  vendor: silabs
   id: clock_manager
 - package: simplicity_sdk
   vendor: silabs
@@ -199,6 +195,9 @@ component:
   - SPI
   vendor: silabs
   id: spidrv_eusart
+- package: simplicity_sdk
+  vendor: silabs
+  id: brd2703a
 other_file:
 - path: qr_code_img.png
 define:
@@ -279,4 +278,3 @@ sdk_extension:
 post_build:
 - path: matter_thread_soc_extended_color_light_strip_app_freertos.slpb
   profile: application
-

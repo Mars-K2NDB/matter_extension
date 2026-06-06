@@ -1,0 +1,24 @@
+!!omap
+- id: rf_bm_mg24b2
+- label: RF-BM-MG24B2
+- package: matter
+- description: Board support for RF-star RF-BM-MG24B2 Matter module (EFR32MG24A420).
+- category: Platform|Board|Custom
+- quality: production
+- metadata:
+    sbom:
+      license: Zlib
+- requires:
+  - name: rf_bm_mg24b2_revision
+- provides:
+  - name: rf_bm_mg24b2
+- recommends:
+  - id: EFR32MG24A420F1536IM48
+    vendor: silabs
+    package: simplicity_sdk
+  - id: rf_bm_mg24b2_carrier
+    vendor: silabs
+    package: matter
+- ui_hints:
+    visibility: never
+- root_path: slc/component/board-support

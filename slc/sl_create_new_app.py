@@ -254,8 +254,14 @@ class CreateApp:
         Returns:
             True if valid, False otherwise
         """
+        known_custom = {"rf_bm_mg24b1", "rf_bm_mg24b2"}
+        if board.lower() in known_custom:
+            return True
         if not re.fullmatch(r"brd\d{4}[abc]", board, re.IGNORECASE):
-            logging.error("The second positional argument (silabs_board) must be of the form 'brdXXXXY', where XXXX are digits and Y is a/b/c.")
+            logging.error(
+                "The board argument must be 'rf_bm_mg24b1', 'rf_bm_mg24b2' "
+                "or of the form 'brdXXXXY' (XXXX are digits and Y is a/b/c)."
+            )
             return False
         return True
 

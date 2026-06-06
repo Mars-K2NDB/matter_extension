@@ -22,12 +22,12 @@ out/
 slc/tools/
 
 # Silicon Labs SLC / sl_build.py outputs (all projects: .slcp app, .slcw solution, bootloader)
-#   cmake:   <project>/cmake_gcc|iar|llvm/build  or  <solution>_cmake/build
+#   Regenerate via: ./build.sh <project>  or  slc generate
 #   flash:   <project>/artifact/
-**/cmake_gcc/build/
-**/cmake_iar/build/
-**/cmake_llvm/build/
-**/*_cmake/build/
+**/cmake_gcc/**
+**/cmake_iar/**
+**/cmake_llvm/**
+**/*_cmake/**
 **/artifact/
 **/.ninja_log
 **/.projectlinkstore

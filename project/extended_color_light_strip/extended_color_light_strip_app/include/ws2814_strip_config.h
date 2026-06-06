@@ -16,7 +16,7 @@
 #pragma once
 
 #ifndef WS2814_LED_COUNT
-#define WS2814_LED_COUNT 69
+#define WS2814_LED_COUNT 70
 #endif
 
 /** EUSART 同步 SPI 参考时钟（与 SL_CLOCK_MANAGER_HFXO_FREQ / HFXO_FREQ 一致） */
@@ -110,5 +110,5 @@
  * 1：开启开关/亮度/颜色 smoothstep 渐变。
  */
 #ifndef STRIP_FADE_ENABLED
-#define STRIP_FADE_ENABLED 0
+#define STRIP_FADE_ENABLED 1
 #endif

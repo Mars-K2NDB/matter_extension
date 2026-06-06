@@ -9,21 +9,62 @@
 | `extended_color_light`       | Extended Color Light       | `extended_color_light_app`       | `matter_thread_soc_extended_color_light_app_series_2_internal_freertos`       |
 | `extended_color_light_strip` | Extended Color Light Strip | `extended_color_light_strip_app` | `matter_thread_soc_extended_color_light_strip_app_series_2_internal_freertos` |
 
-| 目录                         | PWM / 输出                  |
-| ---------------------------- | --------------------------- |
-| `dimmable_light`             | PB4                         |
-| `colortemperature_light`     | PB4 冷 / PB5 暖             |
-| `extended_color_light`       | PC0–PC2 (RGB), PB4–PB5 (CW) |
+| 目录                         | PWM / 输出                                    |
+| ---------------------------- | --------------------------------------------- |
+| `dimmable_light`             | PB4                                           |
+| `colortemperature_light`     | PB4 冷 / PB5 暖                               |
+| `extended_color_light`       | PC0–PC2 (RGB), PB4–PB5 (CW)                   |
 | `extended_color_light_strip` | SPI 幻彩灯带（WS2814，69 颗，内置 15 种灯效） |
 
 ## 脚本目录
 
-`project/scripts/` 为迁移工具，**不参与编译**（说明见下文）。
+`project/scripts/` 为迁移与板型切换工具。
 
 - `setup_light_projects.py` — 从 `lighting_mot` 同步并部署 `templates/` 驱动与覆盖
+- `switch_board.py` — 在 `brd2703a` / `rf_bm_mg24b1` / `rf_bm_mg24b2` 间切换四个产品（含 RAIL PA 自动匹配）
 - `patch_pwm_configs.py` / `patch_pintools.py` — 可选，批量恢复引脚配置
+- `boards/` — 长期维护的硬件 profile（芯片、CTUNE、slcp 组件规则）
 - `templates/drivers/` — 各灯型驱动模板（snake_case，与 `*_app` 内一致）
 - `templates/overlays/` — 各产品 `light_output.h`、`CustomerAppTask.cpp` 等
+
+## 硬件板型切换（多 profile）
+
+仓库长期维护多套硬件目标，定义位于 `project/scripts/boards/`。`switch_board.py` 切换时会按 `pa_tx_dbm` 自动写入 RAIL sequencer / PA tables，避免 10 dBm 与 19.5 dBm 芯片混用导致 `RAIL Assert:83`。
+
+| Profile        | 硬件                         | 芯片                   | PA       | HFXO CTUNE |
+| -------------- | ---------------------------- | ---------------------- | -------- | ---------- |
+| `brd2703a`     | Silicon Labs BRD2703A 开发板 | EFR32MG24B210F1536IM48 | 10 dBm   | 100        |
+| `rf_bm_mg24b1` | RF-star RF-BM-MG24B1 模组    | EFR32MG24A410F1536IM48 | 10 dBm   | 92         |
+| `rf_bm_mg24b2` | RF-star RF-BM-MG24B2 模组    | EFR32MG24A420F1536IM48 | 19.5 dBm | 92         |
+
+当前激活板型记录在 `project/.board-active`（默认 `brd2703a`）。
+
+```bash
+# 查看当前板型
+python3 project/scripts/switch_board.py status
+
+# 切换到 19.5 dBm 模组 B2
+python3 project/scripts/switch_board.py rf_bm_mg24b2
+
+# 切换到 10 dBm 模组 B1
+python3 project/scripts/switch_board.py rf_bm_mg24b1
+
+# 切回开发板
+python3 project/scripts/switch_board.py brd2703a
+
+# 强制重新应用 RAIL PA 配置（板型未变时）
+python3 project/scripts/switch_board.py rf_bm_mg24b2 --force
+```
+
+编译时也可直接指定板型；若与 `.board-active` 不一致，`build.sh` 会自动调用 `switch_board.py`：
+
+```bash
+./build.sh extended_color_light -b rf_bm_mg24b2
+./build.sh extended_color_light -b rf_bm_mg24b1
+./build.sh extended_color_light -b brd2703a
+```
+
+**Simplicity Studio 6**：在打开 `.slcw` 前，先执行 `switch_board.py` 切换到目标板型，SS6 与 CLI 将读取同一份 `.slcp`。请勿将 Windows SS6 生成的 `autogen/`、`cmake_*` 提交到仓库。
 
 ## 环境准备
 
@@ -34,7 +75,7 @@ pip3 install -r requirements.txt
 python3 slc/sl_setup_env.py
 ```
 
-默认开发板：`brd2703a`（BRD2703A）。若使用其它板型，将下文命令中的 `-b brd2703a` 替换为对应板名。
+默认硬件目标：`brd2703a`（BRD2703A）。模组产品使用 `-b rf_bm_mg24b2`。
 
 ## 创建 / 更新工程
 
@@ -85,12 +126,12 @@ python3 slc/sl_build.py \
 
 ## PWM 与驱动通道（应用层按引脚自动匹配）
 
-| 产品       | 硬件引脚             | 驱动逻辑                                                |
-| ---------- | -------------------- | ------------------------------------------------------- |
-| 调光灯     | PB04                 | `SinglePwmDriver` → `sl_pwm_pwm0`                       |
-| 色温灯     | PB04 冷 / PB05 暖    | `CtDualPwmDriver` 按 `OUTPUT_PORT/PIN` 选冷/暖 PWM 实例 |
-| 五路 RGBCW | PC00/01/02 + PB04/05 | `RgbcwPwmDriver` 按引脚映射 R/G/B/C/W                   |
-| SPI 灯带   | EUSART1 TX（如 PC09） | `RgbcwStripDriver` + `ws2814_strip`（WS2814 SPI）         |
+| 产品       | 硬件引脚              | 驱动逻辑                                                |
+| ---------- | --------------------- | ------------------------------------------------------- |
+| 调光灯     | PB04                  | `SinglePwmDriver` → `sl_pwm_pwm0`                       |
+| 色温灯     | PB04 冷 / PB05 暖     | `CtDualPwmDriver` 按 `OUTPUT_PORT/PIN` 选冷/暖 PWM 实例 |
+| 五路 RGBCW | PC00/01/02 + PB04/05  | `RgbcwPwmDriver` 按引脚映射 R/G/B/C/W                   |
+| SPI 灯带   | EUSART1 TX（如 PC09） | `RgbcwStripDriver` + `ws2814_strip`（WS2814 SPI）       |
 
 ## 常用选项
 

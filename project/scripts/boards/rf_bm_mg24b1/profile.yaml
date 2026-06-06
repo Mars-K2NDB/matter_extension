@@ -1,0 +1,37 @@
+id: rf_bm_mg24b1
+label: RF-BM-MG24B1 Module
+chip_id: EFR32MG24A410F1536IM48
+chip_package: simplicity_sdk
+board_id: rf_bm_mg24b1
+board_package: matter
+board_revision_id: null
+board_revision_package: null
+board_config_id: rf_bm_mg24b1_config
+board_config_package: matter
+slc_with: rf_bm_mg24b1
+part_opn: efr32mg24a410f1536im48
+slc_args_board: rf_bm_mg24b1
+pintool_name: pin_tool.EFR32MG24A410F1536IM48
+pintool_part_id: mcu.arm.efr32.mg24.efr32mg24a410f1536im48
+hfxo_ctune: 92
+pa_tx_dbm: 10
+autoselected_app:
+  - package: simplicity_sdk
+    vendor: silabs
+    id: EFR32MG24A410F1536IM48
+  - package: matter
+    vendor: silabs
+    id: rf_bm_mg24b1_carrier
+  - package: matter
+    vendor: silabs
+    id: rf_bm_mg24b1_config
+autoselected_bootloader:
+  - package: simplicity_sdk
+    vendor: silabs
+    id: EFR32MG24A410F1536IM48
+  - package: matter
+    vendor: silabs
+    id: rf_bm_mg24b1_carrier
+  - package: matter
+    vendor: silabs
+    id: rf_bm_mg24b1_config

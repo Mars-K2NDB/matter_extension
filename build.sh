@@ -21,6 +21,9 @@ BUILD_INVOKER="$(basename "${BASH_SOURCE[0]}")"
 PROJECT_DIR="${REPO_ROOT}/project"
 SL_BUILD="${REPO_ROOT}/slc/sl_build.py"
 DEFAULT_BOARD="${BOARD:-brd2703a}"
+BOARD_ACTIVE_FILE="${PROJECT_DIR}/.board-active"
+SWITCH_BOARD="${PROJECT_DIR}/scripts/switch_board.py"
+KNOWN_BOARDS="brd2703a brd4187c rf_bm_mg24b1 rf_bm_mg24b2"
 
 declare -A PROJECT_LABEL=(
 	[dimmable_light]="调光灯 (Dimmable Light)"
@@ -227,6 +230,36 @@ clean_projects() {
 	clean_product_dir "${PROJECT_DIR}/${target}"
 }
 
+validate_board() {
+	local board="$1"
+	case " ${KNOWN_BOARDS} " in
+	*" ${board} "*) return 0 ;;
+	esac
+	echo "未知板型: ${board}，可选: ${KNOWN_BOARDS}" >&2
+	return 1
+}
+
+sync_board_profile() {
+	local board="$1"
+	local active=""
+
+	if [[ ! -f "$SWITCH_BOARD" ]]; then
+		echo "缺少板型切换脚本: ${SWITCH_BOARD}" >&2
+		return 1
+	fi
+
+	if [[ -f "$BOARD_ACTIVE_FILE" ]]; then
+		active="$(tr -d '[:space:]' <"$BOARD_ACTIVE_FILE")"
+	fi
+
+	if [[ "$active" == "$board" ]]; then
+		return 0
+	fi
+
+	echo "板型与 project/.board-active 不一致，自动切换: ${active:-未设置} -> ${board}"
+	python3 "$SWITCH_BOARD" "$board" || return 1
+}
+
 run_build() {
 	local slcw="$1"
 	local skip_gen="$2"
@@ -257,7 +290,12 @@ build_project() {
 	local jobs="${4:-}"
 	local name slcw
 
+	validate_board "$board" || return 1
 	validate_project_arg "$target" || return 1
+
+	if [[ "$skip_gen" != "true" ]]; then
+		sync_board_profile "$board" || return 1
+	fi
 
 	if [[ "$target" == "all" ]]; then
 		for name in "${PROJECT_NAMES[@]}"; do
@@ -285,7 +323,7 @@ usage() {
   extended_color_light_strip
 
 选项:
-  -b, --board <板型>   开发板，默认 ${DEFAULT_BOARD}
+  -b, --board <板型>   硬件目标，默认 ${DEFAULT_BOARD}（可选: ${KNOWN_BOARDS}）
   -j, --jobs <N>       并行任务数
   -s, --skip-gen       编译时跳过 SLC generate
   -h, --help           显示帮助
@@ -338,7 +376,7 @@ _build_sh_complete() {
 	fi
 
 	if [[ "\$_prev" == "-b" || "\$_prev" == "--board" ]]; then
-		COMPREPLY=(\$(compgen -W "brd2703a brd4187c" -- "\$_cur"))
+		COMPREPLY=(\$(compgen -W "${KNOWN_BOARDS}" -- "\$_cur"))
 		return
 	fi
 

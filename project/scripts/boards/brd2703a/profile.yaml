@@ -1,0 +1,38 @@
+id: brd2703a
+label: BRD2703A Explorer Kit
+chip_id: EFR32MG24B210F1536IM48
+chip_package: simplicity_sdk
+board_id: brd2703a
+board_package: simplicity_sdk
+board_revision_id: brd2703a_a02
+board_revision_package: simplicity_sdk
+board_config_id: brd2703a_config
+board_config_package: simplicity_sdk
+slc_with: brd2703a
+part_opn: efr32mg24b210f1536im48
+slc_args_board: brd2703arevA02
+pintool_name: pin_tool.EFR32MG24B210F1536IM48
+pintool_part_id: mcu.arm.efr32.mg24.efr32mg24b210f1536im48
+hfxo_ctune: 100
+pa_tx_dbm: 10
+# PWM 类 app（含 autoselected_components 的产品应用）
+autoselected_app:
+  - package: simplicity_sdk
+    vendor: silabs
+    id: EFR32MG24B210F1536IM48
+  - package: simplicity_sdk
+    vendor: silabs
+    id: brd2703a_a02
+  - package: simplicity_sdk
+    vendor: silabs
+    id: brd2703a_config
+autoselected_bootloader:
+  - package: simplicity_sdk
+    vendor: silabs
+    id: EFR32MG24B210F1536IM48
+  - package: simplicity_sdk
+    vendor: silabs
+    id: brd2703a_a02
+  - package: simplicity_sdk
+    vendor: silabs
+    id: brd2703a_config

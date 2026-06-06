@@ -52,6 +52,12 @@ requires:
       - brd2703a
   - name: simple_button_recommended_instance
     condition:
+      - rf_bm_mg24b1
+  - name: simple_button_recommended_instance
+    condition:
+      - rf_bm_mg24b2
+  - name: simple_button_recommended_instance
+    condition:
       - brd2709a
   - name: simple_button_recommended_instance
     condition:
