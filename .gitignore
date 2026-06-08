@@ -21,6 +21,9 @@ out/
 /src/darwin/Framework/build/
 slc/tools/
 
+# Active board profile (written by switch_board.py / build.sh -b mismatch)
+project/.board-active
+
 # Silicon Labs SLC / sl_build.py outputs (all projects: .slcp app, .slcw solution, bootloader)
 #   Regenerate via: ./build.sh <project>  or  slc generate
 #   flash:   <project>/artifact/

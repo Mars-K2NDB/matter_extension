@@ -37,7 +37,7 @@
 | `rf_bm_mg24b1` | RF-star RF-BM-MG24B1 模组    | EFR32MG24A410F1536IM48 | 10 dBm   | 92         |
 | `rf_bm_mg24b2` | RF-star RF-BM-MG24B2 模组    | EFR32MG24A420F1536IM48 | 19.5 dBm | 92         |
 
-当前激活板型记录在 `project/.board-active`（默认 `brd2703a`）。
+当前激活板型记录在 `project/.board-active`（由 `switch_board.py` 或 `build.sh -b` 自动写入，本地文件不提交 Git）。
 
 ```bash
 # 查看当前板型
