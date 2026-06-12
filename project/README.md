@@ -1,6 +1,6 @@
 # Matter Thread 照明产品工程
 
-基于 `lighting_mot` 拆分的四个 Matter over Thread 照明产品。
+基于 `lighting_mot` 拆分的四个 Matter over Thread 照明产品，以及两个 Matter over Thread 插座产品。
 
 | 目录                         | Matter 设备类型            | 应用目录                         | Workspace                                                                     |
 | ---------------------------- | -------------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
@@ -8,6 +8,8 @@
 | `colortemperature_light`     | Color Temperature Light    | `colortemperature_light_app`     | `matter_thread_soc_colortemperature_light_app_series_2_internal_freertos`     |
 | `extended_color_light`       | Extended Color Light       | `extended_color_light_app`       | `matter_thread_soc_extended_color_light_app_series_2_internal_freertos`       |
 | `extended_color_light_strip` | Extended Color Light Strip | `extended_color_light_strip_app` | `matter_thread_soc_extended_color_light_strip_app_series_2_internal_freertos` |
+| `onoff_plug`                 | On/Off Plug-in Unit        | `onoff_plug_app`                 | `matter_thread_soc_onoff_plug_app_series_2_internal_freertos`                 |
+| `metering_plug`              | Metering Plug              | `metering_plug_app`              | `matter_thread_soc_metering_plug_app_series_2_internal_freertos`              |
 
 | 目录                         | PWM / 输出                                    |
 | ---------------------------- | --------------------------------------------- |
@@ -15,12 +17,15 @@
 | `colortemperature_light`     | PB4 冷 / PB5 暖                               |
 | `extended_color_light`       | PC0–PC2 (RGB), PB4–PB5 (CW)                   |
 | `extended_color_light_strip` | SPI 幻彩灯带（WS2814，69 颗，内置 15 种灯效） |
+| `onoff_plug`                 | 开关控制（LED1 指示插座状态，BTN1 切换）      |
+| `metering_plug`              | 开关控制 + 电量计量（端点 2：Electrical Sensor） |
 
 ## 脚本目录
 
 `project/scripts/` 为迁移与板型切换工具。
 
 - `setup_light_projects.py` — 从 `lighting_mot` 同步并部署 `templates/` 驱动与覆盖
+- `setup_plug_projects.py` — 配置普通插座 / 计量插座 ZAP、SLCP 与计量驱动覆盖
 - `switch_board.py` — 在 `brd2703a` / `rf_bm_mg24b1` / `rf_bm_mg24b2` 间切换四个产品（含 RAIL PA 自动匹配）
 - `patch_pwm_configs.py` / `patch_pintools.py` — 可选，批量恢复引脚配置
 - `boards/` — 长期维护的硬件 profile（芯片、CTUNE、slcp 组件规则）
@@ -89,6 +94,9 @@ python3 slc/sl_create_new_app.py -n project/<产品目录> \
 
 # 迁移 lighting_mot 配置、自定义 src 与 PWM 引脚
 python3 project/scripts/setup_light_projects.py
+
+# 配置插座工程（首次创建 onoff_plug / metering_plug 后执行）
+python3 project/scripts/setup_plug_projects.py
 ```
 
 ## 编译指令
@@ -102,6 +110,8 @@ source ./build.sh                  # 列出项目并在当前终端启用 Tab �
 ./build.sh colortemperature_light
 ./build.sh extended_color_light
 ./build.sh extended_color_light_strip
+./build.sh onoff_plug
+./build.sh metering_plug
 ```
 
 仅重新编译（跳过 SLC generate）：
@@ -163,5 +173,7 @@ Solution 成功构建后，合并固件通常位于各产品 `artifact/` 目录�
 | 色温灯   | `project/colortemperature_light/artifact/matter_thread_soc_colortemperature_light_app_series_2_internal_freertos_full.s37`         |
 | RGBCW 灯 | `project/extended_color_light/artifact/matter_thread_soc_extended_color_light_app_series_2_internal_freertos_full.s37`             |
 | SPI 灯带 | `project/extended_color_light_strip/artifact/matter_thread_soc_extended_color_light_strip_app_series_2_internal_freertos_full.s37` |
+| 普通插座 | `project/onoff_plug/artifact/matter_thread_soc_onoff_plug_app_series_2_internal_freertos_full.s37` |
+| 计量插座 | `project/metering_plug/artifact/matter_thread_soc_metering_plug_app_series_2_internal_freertos_full.s37` |
 
 应用单独镜像（未合并 bootloader）位于各 `*_app/artifact/` 或 `*_app/cmake_gcc/build/base/*.s37`。

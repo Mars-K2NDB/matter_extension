@@ -1,0 +1,10 @@
+{
+  "sdkRoot": "/home/mars/matter_extension/third_party/simplicity_sdk/",
+  "apackRoot": "/home/mars/matter_extension/slc/tools/zap",
+  "partOpn": "efr32mg24b210f1536im48",
+  "zcl.matterZclJsonFile": "/home/mars/matter_extension/src/app/zap-templates/zcl/zcl.json",
+  "zcl.zigbeeZclJsonFile": "/home/mars/matter_extension/third_party/simplicity_sdk/zigbee/app/zcl/zcl-zap.json",
+  "boards": "brd2703arevA02",
+  "zcl.matterTemplateJsonFile": "/home/mars/matter_extension/src/app/zap-templates/app-templates.json",
+  "zcl.zigbeeTemplateJsonFile": "/home/mars/matter_extension/third_party/simplicity_sdk/zigbee/app/framework/gen-template/gen-templates.json"
+}

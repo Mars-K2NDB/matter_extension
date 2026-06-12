@@ -1,0 +1,6 @@
+{
+  "sdkRoot": "/home/mars/matter_extension/third_party/simplicity_sdk/",
+  "apackRoot": "/home/mars/matter_extension/third_party/simplicity_sdk/bluetooth_bgbuild",
+  "partOpn": "efr32mg24b210f1536im48",
+  "boards": "brd2703arevA02"
+}

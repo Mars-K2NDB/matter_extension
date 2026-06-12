@@ -22,6 +22,8 @@ PRODUCTS = (
     "colortemperature_light",
     "extended_color_light",
     "extended_color_light_strip",
+    "onoff_plug",
+    "metering_plug",
 )
 
 # slcp 中始终移除的板型/芯片相关组件 id（其余从各 profile 动态收集）

@@ -23,6 +23,7 @@ SL_BUILD="${REPO_ROOT}/slc/sl_build.py"
 DEFAULT_BOARD="${BOARD:-brd2703a}"
 BOARD_ACTIVE_FILE="${PROJECT_DIR}/.board-active"
 SWITCH_BOARD="${PROJECT_DIR}/scripts/switch_board.py"
+BOARDS_PROFILE_DIR="${PROJECT_DIR}/scripts/boards"
 KNOWN_BOARDS="brd2703a brd4187c rf_bm_mg24b1 rf_bm_mg24b2"
 
 declare -A PROJECT_LABEL=(
@@ -30,6 +31,9 @@ declare -A PROJECT_LABEL=(
 	[colortemperature_light]="色温灯 (Color Temperature Light)"
 	[extended_color_light]="五路 RGBCW 灯 (Extended Color Light)"
 	[extended_color_light_strip]="SPI 幻彩灯带 (Extended Color Light Strip)"
+	[onoff_plug]="普通插座 (On/Off Plug-in Unit)"
+	[metering_plug]="计量插座 (Metering Plug)"
+	[generic_switch_remote]="Generic Switch 遥控器 (4 键 + 复位)"
 )
 
 PROJECT_NAMES=()
@@ -41,6 +45,9 @@ PROJECT_ORDER=(
 	colortemperature_light
 	extended_color_light
 	extended_color_light_strip
+	onoff_plug
+	metering_plug
+	generic_switch_remote
 )
 
 # project/ 下不参与编译的目录名
@@ -145,9 +152,49 @@ validate_project_arg() {
 	return 1
 }
 
+read_profile_field() {
+	local file="$1" field="$2"
+	sed -n "s/^${field}: //p" "$file" 2>/dev/null | head -1
+}
+
+board_chip_id() {
+	local board="$1"
+	local profile="${BOARDS_PROFILE_DIR}/${board}/profile.yaml"
+	if [[ -f "$profile" ]]; then
+		read_profile_field "$profile" chip_id
+	fi
+}
+
+print_board_list() {
+	local board_id profile chip label active="" mark
+	if [[ -f "$BOARD_ACTIVE_FILE" ]]; then
+		active="$(tr -d '[:space:]' <"$BOARD_ACTIVE_FILE")"
+	fi
+	echo "可编译板型/芯片:"
+	for board_id in $KNOWN_BOARDS; do
+		profile="${BOARDS_PROFILE_DIR}/${board_id}/profile.yaml"
+		mark=""
+		if [[ "$board_id" == "$active" ]]; then
+			mark=" *"
+		fi
+		if [[ -f "$profile" ]]; then
+			chip="$(read_profile_field "$profile" chip_id)"
+			label="$(read_profile_field "$profile" label)"
+			printf "  %-16s %s (%s)%s\n" "$board_id" "$chip" "$label" "$mark"
+		else
+			printf "  %-16s %s%s\n" "$board_id" "(无 switch_board profile)" "$mark"
+		fi
+	done
+}
+
 print_project_list() {
-	local name slcw i
-	echo "可编译项目（开发板: ${DEFAULT_BOARD}）:"
+	local name slcw i default_chip
+	default_chip="$(board_chip_id "$DEFAULT_BOARD")"
+	if [[ -n "$default_chip" ]]; then
+		echo "可编译项目（开发板: ${DEFAULT_BOARD}，芯片: ${default_chip}）:"
+	else
+		echo "可编译项目（开发板: ${DEFAULT_BOARD}）:"
+	fi
 	for i in "${!PROJECT_NAMES[@]}"; do
 		name="${PROJECT_NAMES[$i]}"
 		slcw="${PROJECT_SLCW[$i]}"
@@ -155,8 +202,11 @@ print_project_list() {
 		printf "      %s\n" "${slcw#${REPO_ROOT}/}"
 	done
 	echo ""
-	echo "编译: ./${BUILD_INVOKER} <项目名>"
+	print_board_list
+	echo ""
+	echo "编译: ./${BUILD_INVOKER} <项目名> [-b <板型>]"
 	echo "清除: ./${BUILD_INVOKER} clean <项目名>"
+	echo "切换板型: python3 project/scripts/switch_board.py <板型>"
 }
 
 # 无参数：列出项目；source 时在本 shell 安装 Tab 补全
@@ -265,6 +315,20 @@ run_build() {
 	local skip_gen="$2"
 	local board="$3"
 	local jobs="${4:-}"
+	local project_root custom_build
+
+	project_root="$(dirname "$slcw")"
+	custom_build="${project_root}/build.py"
+
+	if [[ -f "$custom_build" && "$skip_gen" != "true" ]]; then
+		local -a hook_cmd=(python3 "$custom_build" -b "$board")
+		if [[ -n "$jobs" ]]; then
+			hook_cmd+=(-j "$jobs")
+		fi
+		echo "执行: (cd ${REPO_ROOT}) ${hook_cmd[*]}"
+		(cd "$REPO_ROOT" && "${hook_cmd[@]}")
+		return $?
+	fi
 
 	if [[ ! -f "$SL_BUILD" ]]; then
 		echo "缺少编译脚本: ${SL_BUILD}" >&2
