@@ -34,6 +34,7 @@ declare -A PROJECT_LABEL=(
 	[onoff_plug]="普通插座 (On/Off Plug-in Unit)"
 	[metering_plug]="计量插座 (Metering Plug)"
 	[generic_switch_remote]="Generic Switch 遥控器 (4 键 + 复位)"
+	[battery_switch_remote]="电池供电遥控器 (4 键 + 复位, ICD)"
 )
 
 PROJECT_NAMES=()
@@ -48,6 +49,7 @@ PROJECT_ORDER=(
 	onoff_plug
 	metering_plug
 	generic_switch_remote
+	battery_switch_remote
 )
 
 # project/ 下不参与编译的目录名

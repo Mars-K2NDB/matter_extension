@@ -1,0 +1,304 @@
+project_name: matter_thread_soc_battery_switch_remote_app_freertos
+label: "Matter Thread \u7535\u6C60\u9065\u63A7\u5668 (4 \u952E + \u590D\u4F4D)"
+description: "Matter Thread \u7535\u6C60\u9065\u63A7\u5668 (4 \u952E + \u590D\u4F4D\
+  )"
+category: Matter Application
+filter:
+- name: Difficulty
+  value:
+  - Advanced
+- name: Type
+  value:
+  - SoC
+- name: Wireless Technology
+  value:
+  - Matter
+package: matter
+quality: production
+readme:
+- path: README.md
+source:
+- path: src/AppTask.cpp
+- path: src/main.cpp
+- path: src/DataModelCallbacks.cpp
+include:
+- path: include
+  file_list:
+  - path: AppConfig.h
+  - path: AppEvent.h
+  - path: AppTask.h
+  - path: CHIPProjectConfig.h
+sdk:
+  vendor: silabs
+  id: simplicity_sdk
+  version: 2025.12.2
+toolchain_settings:
+- value: gnu++17
+  option: cxx_standard
+component:
+- package: matter
+  vendor: silabs
+  id: app_common
+- package: matter
+  vendor: silabs
+  id: matter
+- package: matter
+  vendor: silabs
+  id: matter_access_control
+- package: matter
+  vendor: silabs
+  id: matter_administrator_commissioning
+- package: matter
+  vendor: silabs
+  id: matter_basic_information
+- package: matter
+  vendor: silabs
+  id: matter_bindings
+- package: matter
+  vendor: silabs
+  id: matter_ble
+- package: matter
+  vendor: silabs
+  id: matter_buttons
+- package: matter
+  vendor: silabs
+  id: matter_codegen_dm
+- package: matter
+  vendor: silabs
+  id: matter_configuration_over_swo
+- package: matter
+  vendor: silabs
+  id: matter_crypto
+- package: matter
+  vendor: silabs
+  id: matter_default_lcd_config
+- package: matter
+  vendor: silabs
+  id: matter_descriptor
+- package: matter
+  vendor: silabs
+  id: matter_ethernet_network_diagnostics
+- package: matter
+  vendor: silabs
+  id: matter_fixed_label
+- package: matter
+  vendor: silabs
+  id: matter_gatt_static
+- package: matter
+  vendor: silabs
+  id: matter_general_commissioning
+- package: matter
+  vendor: silabs
+  id: matter_diagnostic_logs
+- package: matter
+  vendor: silabs
+  id: matter_general_diagnostics
+- package: matter
+  vendor: silabs
+  id: matter_group_key_mgmt
+- package: matter
+  vendor: silabs
+  id: matter_groups
+- package: matter
+  vendor: silabs
+  id: matter_identify
+- package: matter
+  vendor: silabs
+  id: matter_leds
+- package: matter
+  vendor: silabs
+  id: matter_localization_configuration
+- package: matter
+  vendor: silabs
+  id: matter_log_uart
+- package: matter
+  vendor: silabs
+  id: matter_network_commissioning
+- package: matter
+  vendor: silabs
+  id: matter_operational_credentials
+- package: matter
+  vendor: silabs
+  id: matter_ota_requestor
+- package: matter
+  vendor: silabs
+  id: matter_ota_support
+- package: matter
+  vendor: silabs
+  id: matter_platform_mg
+- package: matter
+  vendor: silabs
+  id: matter_provision_default
+- package: matter
+  vendor: silabs
+  id: matter_segger_rtt
+- package: matter
+  vendor: silabs
+  id: matter_shell
+- package: matter
+  vendor: silabs
+  id: matter_software_diagnostics
+
+- package: matter
+  vendor: silabs
+  id: ot_stack_mtd
+- package: matter
+  vendor: silabs
+  id: matter_time_synchronization
+- package: matter
+  vendor: silabs
+  id: matter_icd_core
+- package: matter
+  vendor: silabs
+  id: matter_icd_management
+- package: matter
+  vendor: silabs
+  id: matter_check_in_message
+- package: matter
+  vendor: silabs
+  id: matter_icd_checkin_sender
+- package: matter
+  vendor: silabs
+  id: matter_switch
+- package: matter
+  vendor: silabs
+  id: matter_thread
+- package: matter
+  vendor: silabs
+  id: matter_thread_network_diagnostics
+- package: matter
+  vendor: silabs
+  id: matter_time_format_localization
+- package: matter
+  vendor: silabs
+  id: matter_user_label
+- package: matter
+  vendor: silabs
+  id: matter_wifi_network_diagnostics
+- package: simplicity_sdk
+  vendor: silabs
+  id: clock_manager
+- package: simplicity_sdk
+  vendor: silabs
+  id: device_init
+- package: simplicity_sdk
+  vendor: silabs
+  id: rail_util_pti
+- package: simplicity_sdk
+  vendor: silabs
+  id: sl_main
+- package: simplicity_sdk
+  vendor: silabs
+  id: brd2703a
+- package: simplicity_sdk
+  vendor: silabs
+  id: simple_button
+  instance:
+  - btn0
+  - c0
+  - c1
+  - c2
+  - c3
+other_file:
+- path: qr_code_img.png
+define:
+- name: MATTER_STATUS_LED_OFF_WHEN_ATTACHED
+  value: '1'
+- name: CHIP_CRYPTO_PLATFORM
+  value: '1'
+- name: _WANT_REENT_SMALL
+  value: '1'
+- name: NVM3_DEFAULT_NVM_SIZE
+  value: '40960'
+- name: NVM3_DEFAULT_MAX_OBJECT_SIZE
+  value: '4092'
+config_file:
+- path: config/common/generic-switch-thread-app.zap
+  directory: common
+- path: config/provision/provision.mattpconf
+  directory: provision
+requires:
+- name: matter_drivers_series_2
+configuration:
+- condition:
+  - matter_ble_side_channel
+  name: SL_BT_CONFIG_USER_ADVERTISERS
+  value: '2'
+- condition:
+  - device_series_3
+  name: SL_TOKEN_MANAGER_STATIC_SECURE_TOKEN_SIZE
+  value: '8192'
+- name: SL_OPENTHREAD_ENABLE_APP_TASK
+  value: '0'
+- name: SL_OPENTHREAD_ENABLE_CLI_TASK
+  value: '0'
+- name: OPENTHREAD_CONFIG_LOG_OUTPUT
+  value: OPENTHREAD_CONFIG_LOG_OUTPUT_APP
+- condition:
+  - matter_thread_cert_libs
+  name: SL_MBEDTLS_KEY_EXCHANGE_ECDHE_ECDSA_ENABLED
+  value: '1'
+- name: SL_MBEDTLS_KEY_EXCHANGE_PSK_ENABLED
+  value: '1'
+- condition:
+  - matter_thread_coap_cert_libs
+  name: OPENTHREAD_CONFIG_COAP_API_ENABLE
+  value: '1'
+- condition:
+  - matter_thread_coap_cert_libs
+  name: OPENTHREAD_CONFIG_COAP_OBSERVE_API_ENABLE
+  value: '1'
+- condition:
+  - matter_thread_coap_cert_libs
+  name: OPENTHREAD_CONFIG_COAP_SECURE_API_ENABLE
+  value: '1'
+- name: SL_STACK_SIZE
+  value: '4608'
+- unless:
+  - device_series_3
+  name: SL_BT_RTOS_EVENT_HANDLER_STACK_SIZE
+  value: '1536'
+- condition:
+  - device_series_3
+  name: SL_BT_RTOS_EVENT_HANDLER_STACK_SIZE
+  value: '1856'
+- name: CIRCULAR_QUEUE_LEN_MAX
+  value: '16'
+- name: SL_MBEDTLS_PSA_ASSUME_EXCLUSIVE_BUFFERS
+  value: '1'
+- name: CHIP_CONFIG_ENABLE_ICD_LIT
+  value: '1'
+- name: CHIP_CONFIG_ENABLE_ICD_CIP
+  value: '1'
+- name: CHIP_CONFIG_ENABLE_ICD_UAT
+  value: '1'
+
+- name: CHIP_CONFIG_ENABLE_ICD_DSLS
+  value: '1'
+- name: SL_IDLE_MODE_DURATION_S
+  value: '600'
+- name: SL_ACTIVE_MODE_DURATION_MS
+  value: '0'
+- name: SL_ACTIVE_MODE_THRESHOLD
+  value: '5000'
+- name: SL_TRANSPORT_IDLE_INTERVAL
+  value: '900'
+- name: SL_TRANSPORT_ACTIVE_INTERVAL
+  value: '1000'
+- name: CHIP_CONFIG_SYNCHRONOUS_REPORTS_ENABLED
+  value: '1'
+- name: CHIP_CONFIG_SUBSCRIPTION_TIMEOUT_RESUMPTION
+  value: '0'
+ui_hints:
+  highlight:
+  - path: README.md
+sdk_extension:
+- vendor: silabs
+  id: wiseconnect3_sdk
+  version: 4.0.1
+- vendor: silabs
+  id: matter
+  version: 2.8.1
+post_build:
+- path: matter_thread_soc_battery_switch_remote_app_freertos.slpb
+  profile: application
