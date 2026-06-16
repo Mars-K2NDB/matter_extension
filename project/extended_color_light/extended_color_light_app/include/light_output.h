@@ -25,6 +25,7 @@ inline uint8_t ResolveLevelForCluster(chip::EndpointId ep, bool on, uint8_t lv)
 {
     return RgbcwPwmDriver::ResolveLevelForCluster(ep, on, lv);
 }
+inline void ApplyProvisionReminderOutput(bool on) { RgbcwPwmDriver::ApplyProvisionReminderOutput(on); }
 
 static constexpr uint16_t kCtMinMireds     = RgbcwPwmDriver::kCtMinMireds;
 static constexpr uint16_t kCtMaxMireds     = RgbcwPwmDriver::kCtMaxMireds;

@@ -24,6 +24,7 @@ inline uint8_t ResolveLevelForCluster(chip::EndpointId ep, bool on, uint8_t lv)
 {
     return CtDualPwmDriver::ResolveLevelForCluster(ep, on, lv);
 }
+inline void ApplyProvisionReminderOutput(bool on) { CtDualPwmDriver::ApplyProvisionReminderOutput(on); }
 
 static constexpr uint16_t kCtMinMireds     = CtDualPwmDriver::kCtMinMireds;
 static constexpr uint16_t kCtMaxMireds     = CtDualPwmDriver::kCtMaxMireds;

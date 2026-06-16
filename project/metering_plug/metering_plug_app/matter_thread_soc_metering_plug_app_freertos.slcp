@@ -19,6 +19,7 @@ readme:
 source:
 - path: src/AppTask.cpp
 - path: src/main.cpp
+- path: src/thread_ftd_boot_fix.cpp
 - path: src/DataModelCallbacks.cpp
 - path: src/OnOffPlugManager.cpp
 - path: ../../../third_party/matter_sdk/examples/dishwasher-app/silabs/src/DataModelHelper.cpp
@@ -33,6 +34,7 @@ include:
   - path: AppEvent.h
   - path: AppTask.h
   - path: CHIPProjectConfig.h
+  - path: thread_ftd_boot_fix.h
   - path: OnOffPlugManager.h
   - path: ElectricalSensorManager.h
   - path: ElectricalEnergyMeasurementInstance.h
@@ -269,6 +271,12 @@ configuration:
   value: '1856'
 - name: CIRCULAR_QUEUE_LEN_MAX
   value: '16'
+- name: CHIP_CONFIG_ENABLE_ICD_LIT
+  value: '0'
+- name: CHIP_CONFIG_ENABLE_ICD_CIP
+  value: '0'
+- name: CHIP_CONFIG_ENABLE_ICD_UAT
+  value: '0'
 - name: SL_MBEDTLS_PSA_ASSUME_EXCLUSIVE_BUFFERS
   value: '1'
 ui_hints:

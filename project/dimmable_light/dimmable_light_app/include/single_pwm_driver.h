@@ -28,6 +28,9 @@ public:
     static bool GetPreFaultState(bool& on, uint8_t& level);
     static uint8_t ResolveLevelForCluster(chip::EndpointId endpoint, bool on, uint8_t cluster_level);
 
+    /** Provisioning reminder overlay; does not change Matter on/level state. */
+    static void ApplyProvisionReminderOutput(bool on);
+
 private:
     static void SaveStateBeforeFault();
     static void PwmOutputKillRegisters();

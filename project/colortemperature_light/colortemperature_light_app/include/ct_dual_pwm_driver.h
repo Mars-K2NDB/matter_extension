@@ -60,6 +60,9 @@ public:
     /** Caller must hold the chip stack lock. Maps min Matter level (1) to PWM brightness level. */
     static uint8_t ResolveLevelForCluster(chip::EndpointId endpoint, bool on, uint8_t cluster_level);
 
+    /** Provisioning reminder overlay; does not change Matter on/level/CT state. */
+    static void ApplyProvisionReminderOutput(bool on);
+
 private:
     enum class FadeKind : uint8_t
     {

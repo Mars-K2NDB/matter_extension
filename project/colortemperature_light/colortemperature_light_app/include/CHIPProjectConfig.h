@@ -28,6 +28,19 @@
 
 #pragma once
 
+// Mains-powered FTD light: disable ICD and defer Thread autostart until device type is configured.
+#ifndef CHIP_CONFIG_ENABLE_ICD_SERVER
+#define CHIP_CONFIG_ENABLE_ICD_SERVER 0
+#endif
+
+#ifndef CHIP_DEVICE_CONFIG_THREAD_FTD
+#define CHIP_DEVICE_CONFIG_THREAD_FTD 1
+#endif
+
+#ifndef CHIP_DEVICE_CONFIG_ENABLE_THREAD_AUTOSTART
+#define CHIP_DEVICE_CONFIG_ENABLE_THREAD_AUTOSTART 0
+#endif
+
 // Use a default pairing code if one hasn't been provisioned in flash.
 #ifndef CHIP_DEVICE_CONFIG_USE_TEST_SETUP_PIN_CODE
 #define CHIP_DEVICE_CONFIG_USE_TEST_SETUP_PIN_CODE 20202021

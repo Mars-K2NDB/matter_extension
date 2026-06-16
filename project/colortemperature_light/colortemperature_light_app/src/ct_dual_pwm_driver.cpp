@@ -373,6 +373,24 @@ void CtDualPwmDriver::ApplyOutputImmediate()
     ApplyDisplayDuties(coolDuty, warmDuty);
 }
 
+void CtDualPwmDriver::ApplyProvisionReminderOutput(bool on)
+{
+    if (OvercurrentProtector::IsFaultActive())
+    {
+        return;
+    }
+
+    CancelFadeTimer();
+
+    uint8_t coolDuty = 0;
+    uint8_t warmDuty = 0;
+    if (on)
+    {
+        DutiesFromBrightnessAndRatio(100, 0, coolDuty, warmDuty);
+    }
+    ApplyDisplayDuties(coolDuty, warmDuty);
+}
+
 void CtDualPwmDriver::ScheduleFade(FadeKind kind, bool restart_fade)
 {
     if (OvercurrentProtector::IsFaultActive())

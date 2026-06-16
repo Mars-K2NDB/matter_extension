@@ -26,6 +26,7 @@
 #endif
 #include <MatterConfig.h>
 #include <platform/silabs/tracing/SilabsTracingMacros.h>
+#include "thread_ftd_boot_fix.h"
 
 using TimeTraceOperation = chip::Tracing::Silabs::TimeTraceOperation;
 
@@ -42,8 +43,7 @@ void app_init(void)
 {
     SILABS_TRACE_END(chip::Tracing::Silabs::TimeTraceOperation::kSilabsInit);
     SILABS_TRACE_BEGIN(chip::Tracing::Silabs::TimeTraceOperation::kMatterInit);
-    // Initialize the matter application. For example, create periodic timer(s) or
-    // task(s).
+    EnsureThreadFtdLinkModeBeforeMatterInit();
     SilabsMatterConfig::AppInit();
 }
 

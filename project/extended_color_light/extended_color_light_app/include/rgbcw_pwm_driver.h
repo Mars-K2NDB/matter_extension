@@ -34,6 +34,9 @@ public:
     static bool GetPreFaultState(bool& on, uint8_t& level, uint16_t& ct_mireds);
     static uint8_t ResolveLevelForCluster(chip::EndpointId endpoint, bool on, uint8_t cluster_level);
 
+    /** Provisioning reminder overlay; does not change Matter light state. */
+    static void ApplyProvisionReminderOutput(bool on);
+
 private:
     struct LightState
     {

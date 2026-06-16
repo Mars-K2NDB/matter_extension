@@ -183,6 +183,26 @@ void SinglePwmDriver::ApplyOutputImmediate()
     display_duty_ = duty;
 }
 
+void SinglePwmDriver::ApplyProvisionReminderOutput(bool on)
+{
+    if (OvercurrentProtector::IsFaultActive())
+    {
+        return;
+    }
+
+    CancelFadeTimer();
+
+    const uint8_t duty = on ? 100 : 0;
+
+    if (route_disabled_ || !pwm_started_)
+    {
+        PwmOutputRestoreRegisters();
+    }
+
+    sl_pwm_set_duty_cycle(&sl_pwm_pwm0, duty);
+    display_duty_ = duty;
+}
+
 void SinglePwmDriver::CancelFadeTimer()
 {
     if (!fade_active_)

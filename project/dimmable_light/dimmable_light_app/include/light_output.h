@@ -20,6 +20,7 @@ inline uint8_t ResolveLevelForCluster(chip::EndpointId ep, bool on, uint8_t lv)
 {
     return SinglePwmDriver::ResolveLevelForCluster(ep, on, lv);
 }
+inline void ApplyProvisionReminderOutput(bool on) { SinglePwmDriver::ApplyProvisionReminderOutput(on); }
 
 static constexpr uint16_t kCtMinMireds     = 111;
 static constexpr uint16_t kCtMaxMireds     = 500;

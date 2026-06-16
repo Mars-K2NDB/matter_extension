@@ -21,10 +21,12 @@ source:
 - path: src/CustomerAppTask.cpp
 - path: src/ct_dual_pwm_driver.cpp
 - path: src/device_user_flash.cpp
+- path: src/provision_reminder.cpp
 - path: src/voltage_adc_driver.cpp
 - path: src/overcurrent_protector.cpp
 - path: src/short_circuit_protector.cpp
 - path: src/main.cpp
+- path: src/thread_ftd_boot_fix.cpp
 include:
 - path: include
   file_list:
@@ -37,6 +39,8 @@ include:
   - path: light_output.h
   - path: ct_dual_pwm_driver.h
   - path: device_user_flash.h
+  - path: provision_reminder.h
+  - path: thread_ftd_boot_fix.h
   - path: ct_pwm_version.h
   - path: voltage_adc_driver.h
   - path: voltage_adc_config.h
@@ -280,6 +284,12 @@ configuration:
   value: '2000'
 - name: CIRCULAR_QUEUE_LEN_MAX
   value: '16'
+- name: CHIP_CONFIG_ENABLE_ICD_LIT
+  value: '0'
+- name: CHIP_CONFIG_ENABLE_ICD_CIP
+  value: '0'
+- name: CHIP_CONFIG_ENABLE_ICD_UAT
+  value: '0'
 - name: SL_MBEDTLS_PSA_ASSUME_EXCLUSIVE_BUFFERS
   value: '1'
 ui_hints:

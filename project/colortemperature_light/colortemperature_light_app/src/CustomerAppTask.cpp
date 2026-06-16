@@ -29,6 +29,7 @@
 #include "AppConfig.h"
 #include "light_output.h"
 #include "device_user_flash.h"
+#include "provision_reminder.h"
 #include "overcurrent_protector.h"
 #include "short_circuit_protector.h"
 #include "voltage_adc_driver.h"
@@ -163,12 +164,15 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
 
     device_user_flash::EnablePersistedLightStateSave();
     outputs_ready_ = true;
+    provision_reminder::TryStartOnBoot();
 
     return CHIP_NO_ERROR;
 }
 
 void CustomerAppTask::LightActionEventHandlerImpl(AppEvent* event)
 {
+    provision_reminder::OnLightSwitchPressed();
+
     bool was_on = false;
     PlatformMgr().LockChipStack();
     OnOffServer::Instance().getOnOffValue(LIGHT_ENDPOINT, &was_on);

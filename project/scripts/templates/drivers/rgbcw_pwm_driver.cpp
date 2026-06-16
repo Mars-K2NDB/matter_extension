@@ -341,6 +341,33 @@ void RgbcwPwmDriver::ApplyOutputImmediate()
     ApplyDisplayDuties(r, g, b, cool, warm);
 }
 
+void RgbcwPwmDriver::ApplyProvisionReminderOutput(bool on)
+{
+    if (OvercurrentProtector::IsFaultActive())
+    {
+        return;
+    }
+
+    CancelFadeTimer();
+
+    if (runtime_.route_disabled || !runtime_.pwm_started)
+    {
+        PwmOutputRestoreRegisters();
+    }
+
+    if (on)
+    {
+        uint8_t cool = 0;
+        uint8_t warm = 0;
+        CtToCoolWarm(kCtMinMireds, 100, cool, warm);
+        ApplyDisplayDuties(0, 0, 0, cool, warm);
+    }
+    else
+    {
+        ApplyDisplayDuties(0, 0, 0, 0, 0);
+    }
+}
+
 void RgbcwPwmDriver::ComputeTargetDuties(uint8_t& r, uint8_t& g, uint8_t& b, uint8_t& cool, uint8_t& warm)
 {
     r = 0;
