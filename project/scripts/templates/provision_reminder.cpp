@@ -30,18 +30,12 @@ void OnBlinkTimer(System::Layer* layer, void* context);
 void OnMaxDurationTimer(System::Layer* layer, void* context);
 void DeferredStartWork(intptr_t context);
 
-bool IsDeviceProvisioned()
+enum class StopMode
 {
-    bool provisioned = false;
-    PlatformMgr().LockChipStack();
-#ifdef SL_WIFI
-    provisioned = ConnectivityMgr().IsWiFiStationProvisioned();
-#else
-    provisioned = ConnectivityMgr().IsThreadProvisioned();
-#endif
-    PlatformMgr().UnlockChipStack();
-    return provisioned;
-}
+    kRestoreMatterOff, // Provisioned: sync Matter state and turn off.
+    kReleaseOverlay,   // Button pressed: clear overlay; caller resumes normal control.
+    kLeaveSteadyOn,    // Unprovisioned timeout: keep cool-white on.
+};
 
 void CancelTimers()
 {
@@ -57,7 +51,7 @@ void RestoreMatterLightOutput()
     light_output::SetOn(false);
 }
 
-void StopActive(bool restore_matter_output)
+void StopActive(StopMode mode)
 {
     if (!active_)
     {
@@ -67,11 +61,21 @@ void StopActive(bool restore_matter_output)
     active_   = false;
     blink_on_ = false;
     CancelTimers();
-    light_output::ApplyProvisionReminderOutput(false);
 
-    if (restore_matter_output)
+    switch (mode)
     {
+    case StopMode::kRestoreMatterOff:
+        light_output::ApplyProvisionReminderOutput(false);
         RestoreMatterLightOutput();
+        break;
+
+    case StopMode::kReleaseOverlay:
+        light_output::ApplyProvisionReminderOutput(false);
+        break;
+
+    case StopMode::kLeaveSteadyOn:
+        light_output::ApplyProvisionReminderOutput(true);
+        break;
     }
 
     SILABS_LOG("Provision reminder: stopped");
@@ -87,7 +91,7 @@ void ScheduleBlinkTimer()
     if (err != CHIP_NO_ERROR)
     {
         ChipLogError(DeviceLayer, "Provision reminder: blink timer failed: %" CHIP_ERROR_FORMAT, err.Format());
-        StopActive(true);
+        StopActive(StopMode::kRestoreMatterOff);
     }
 }
 
@@ -100,7 +104,7 @@ void ScheduleMaxDurationTimer()
     if (err != CHIP_NO_ERROR)
     {
         ChipLogError(DeviceLayer, "Provision reminder: max-duration timer failed: %" CHIP_ERROR_FORMAT, err.Format());
-        StopActive(true);
+        StopActive(StopMode::kRestoreMatterOff);
     }
 }
 
@@ -136,7 +140,14 @@ void OnBlinkTimer(System::Layer* /*layer*/, void* /*context*/)
 
 void OnMaxDurationTimer(System::Layer* /*layer*/, void* /*context*/)
 {
-    StopActive(true);
+    if (IsDeviceProvisioned())
+    {
+        StopActive(StopMode::kRestoreMatterOff);
+    }
+    else
+    {
+        StopActive(StopMode::kLeaveSteadyOn);
+    }
 }
 
 void ConnectivityEventHandler(const ChipDeviceEvent* event, intptr_t /*arg*/)
@@ -149,14 +160,14 @@ void ConnectivityEventHandler(const ChipDeviceEvent* event, intptr_t /*arg*/)
     switch (event->Type)
     {
     case DeviceEventType::kCommissioningComplete:
-        StopActive(true);
+        StopActive(StopMode::kRestoreMatterOff);
         break;
 
     case DeviceEventType::kThreadStateChange:
     case DeviceEventType::kThreadConnectivityChange:
         if (IsDeviceProvisioned())
         {
-            StopActive(true);
+            StopActive(StopMode::kRestoreMatterOff);
         }
         break;
 
@@ -171,6 +182,19 @@ void DeferredStartWork(intptr_t /*context*/)
 }
 
 } // namespace
+
+bool IsDeviceProvisioned()
+{
+    bool provisioned = false;
+    PlatformMgr().LockChipStack();
+#ifdef SL_WIFI
+    provisioned = ConnectivityMgr().IsWiFiStationProvisioned();
+#else
+    provisioned = ConnectivityMgr().IsThreadProvisioned();
+#endif
+    PlatformMgr().UnlockChipStack();
+    return provisioned;
+}
 
 void Init()
 {
@@ -191,7 +215,7 @@ void TryStartOnBoot()
 
 void OnLightSwitchPressed()
 {
-    StopActive(false);
+    StopActive(StopMode::kReleaseOverlay);
 }
 
 bool IsActive()

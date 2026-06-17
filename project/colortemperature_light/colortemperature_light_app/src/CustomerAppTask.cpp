@@ -158,9 +158,12 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     }
     PlatformMgr().UnlockChipStack();
 
-    // Load restored level/CT into PWM driver while lamp stays off.
+    // Load restored level/CT into PWM driver; turn off only after provisioning.
     light_output::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
-    light_output::SetOn(false);
+    if (provision_reminder::IsDeviceProvisioned())
+    {
+        light_output::SetOn(false);
+    }
 
     device_user_flash::EnablePersistedLightStateSave();
     outputs_ready_ = true;

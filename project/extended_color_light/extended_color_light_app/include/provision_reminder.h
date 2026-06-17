@@ -9,6 +9,9 @@ namespace provision_reminder {
 /** Register connectivity handler (idempotent). */
 void Init();
 
+/** True when Thread/Wi-Fi network credentials are stored. */
+bool IsDeviceProvisioned();
+
 /** Start blink when device is not yet provisioned (call after PWM outputs are ready). */
 void TryStartOnBoot();
 

@@ -271,7 +271,14 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     PlatformMgr().UnlockChipStack();
 
     light_output::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
-    light_output::SetOn(false);
+    bool provisioned = false;
+    PlatformMgr().LockChipStack();
+    provisioned = ConnectivityMgr().IsThreadProvisioned();
+    PlatformMgr().UnlockChipStack();
+    if (provisioned)
+    {
+        light_output::SetOn(false);
+    }
 
     device_user_flash::EnablePersistedLightStateSave();
     outputs_ready_ = true;
