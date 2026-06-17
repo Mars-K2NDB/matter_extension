@@ -181,7 +181,7 @@ void LightStripEventHandler(AppEvent* event)
     switch (ev.kind)
     {
     case AppEvent::kOnOff:
-        light_output::SetOn(ev.on);
+        light_output::SetOn(LIGHT_ENDPOINT, ev.on);
         break;
 
     case AppEvent::kLevel:
@@ -257,6 +257,7 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
         ColorControl::Attributes::ColorCapabilities::Set(LIGHT_ENDPOINT, caps);
     }
 
+    device_user_flash::PrepareLevelControlForOnOffRestore(LIGHT_ENDPOINT);
     device_user_flash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);
 
     if (!device_user_flash::HasPersistedLightState())
@@ -277,7 +278,7 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     PlatformMgr().UnlockChipStack();
     if (provisioned)
     {
-        light_output::SetOn(false);
+        light_output::SetOn(LIGHT_ENDPOINT, false);
     }
 
     device_user_flash::EnablePersistedLightStateSave();

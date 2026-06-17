@@ -149,7 +149,8 @@ void SinglePwmDriver::Init()
     sl_pwm_start(&sl_pwm_pwm0);
     pwm_started_    = true;
     route_disabled_ = false;
-    SetOn(false);
+    on_             = false;
+    ApplyOutputImmediate();
 }
 
 uint8_t SinglePwmDriver::LevelToBrightnessPercent(uint8_t level)
@@ -301,7 +302,7 @@ void SinglePwmDriver::ScheduleFade(bool restart_fade)
     fade_active_ = true;
 }
 
-void SinglePwmDriver::SetOn(bool on)
+void SinglePwmDriver::SetOn(chip::EndpointId endpoint, bool on)
 {
     if (on && OvercurrentProtector::BlocksTurnOn())
     {
@@ -309,11 +310,22 @@ void SinglePwmDriver::SetOn(bool on)
         return;
     }
 
-    on_ = on;
-    if (on && level_ <= 1)
+    if (on)
     {
-        level_ = 254;
+        using namespace chip::app::Clusters;
+        using namespace chip::app::DataModel;
+        using namespace chip::Protocols::InteractionModel;
+
+        chip::DeviceLayer::PlatformMgr().LockChipStack();
+        Nullable<uint8_t> currentLevel;
+        if (LevelControl::Attributes::CurrentLevel::Get(endpoint, currentLevel) == Status::Success && !currentLevel.IsNull())
+        {
+            level_ = ResolveLevelForCluster(endpoint, true, currentLevel.Value());
+        }
+        chip::DeviceLayer::PlatformMgr().UnlockChipStack();
     }
+
+    on_ = on;
     ScheduleFade(true);
 }
 
@@ -329,8 +341,19 @@ void SinglePwmDriver::SetLevel(uint8_t level)
 
 void SinglePwmDriver::ApplyClusterLevel(chip::EndpointId endpoint, uint8_t cluster_level)
 {
+    if (on_ && cluster_level <= 1)
+    {
+        return;
+    }
+
+    if (!on_)
+    {
+        level_ = cluster_level;
+        return;
+    }
+
     chip::DeviceLayer::PlatformMgr().LockChipStack();
-    const uint8_t level = ResolveLevelForCluster(endpoint, on_, cluster_level);
+    const uint8_t level = ResolveLevelForCluster(endpoint, true, cluster_level);
     chip::DeviceLayer::PlatformMgr().UnlockChipStack();
     SetLevel(level);
 }
@@ -342,13 +365,13 @@ uint8_t SinglePwmDriver::ResolveLevelForCluster(chip::EndpointId endpoint, bool 
     {
         return level_;
     }
-    if (cluster_level == 0)
+    if (cluster_level > 1)
     {
-        return 0;
+        return cluster_level;
     }
-    if (cluster_level == 1)
+    if (level_ > 1)
     {
-        return 1;
+        return level_;
     }
     return cluster_level;
 }

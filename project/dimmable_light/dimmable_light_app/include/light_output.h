@@ -5,7 +5,7 @@
 namespace light_output {
 
 inline void Init() { SinglePwmDriver::Init(); }
-inline void SetOn(bool on) { SinglePwmDriver::SetOn(on); }
+inline void SetOn(chip::EndpointId ep, bool on) { SinglePwmDriver::SetOn(ep, on); }
 inline void SetLevel(uint8_t level) { SinglePwmDriver::SetLevel(level); }
 inline void ApplyClusterLevel(chip::EndpointId ep, uint8_t level) { SinglePwmDriver::ApplyClusterLevel(ep, level); }
 inline void SyncFromMatterEndpoint(chip::EndpointId ep) { SinglePwmDriver::SyncFromMatterEndpoint(ep); }

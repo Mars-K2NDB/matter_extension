@@ -45,7 +45,7 @@ void LightStripEventHandler(AppEvent* event)
             ChipLogProgress(AppServer, "SinglePwm: on ignored (overcurrent fault)");
             break;
         }
-        light_output::SetOn(ev.on);
+        light_output::SetOn(LIGHT_ENDPOINT, ev.on);
         break;
 
     case AppEvent::kLevel:
@@ -96,13 +96,14 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
 #endif
 
     PlatformMgr().LockChipStack();
+    device_user_flash::PrepareLevelControlForOnOffRestore(LIGHT_ENDPOINT);
     device_user_flash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);
     PlatformMgr().UnlockChipStack();
 
     light_output::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
     if (provision_reminder::IsDeviceProvisioned())
     {
-        light_output::SetOn(false);
+        light_output::SetOn(LIGHT_ENDPOINT, false);
     }
 
     device_user_flash::EnablePersistedLightStateSave();

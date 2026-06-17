@@ -304,7 +304,8 @@ void RgbcwPwmDriver::Init()
     }
     runtime_.pwm_started    = true;
     runtime_.route_disabled = false;
-    SetOn(false);
+    runtime_.light.on       = false;
+    ApplyOutputImmediate();
 }
 
 uint8_t RgbcwPwmDriver::LevelToBrightnessPercent(uint8_t level)
@@ -559,7 +560,7 @@ void RgbcwPwmDriver::ScheduleFade(FadeKind kind, bool restart_fade)
     fade_.active = true;
 }
 
-void RgbcwPwmDriver::SetOn(bool on)
+void RgbcwPwmDriver::SetOn(chip::EndpointId endpoint, bool on)
 {
     if (on && OvercurrentProtector::BlocksTurnOn())
     {
@@ -575,17 +576,21 @@ void RgbcwPwmDriver::SetOn(bool on)
     if (on)
     {
         RestoreLastOnStateIfNeeded();
+
+        using namespace chip::app::Clusters;
+        using namespace chip::app::DataModel;
+        using namespace chip::Protocols::InteractionModel;
+
+        chip::DeviceLayer::PlatformMgr().LockChipStack();
+        Nullable<uint8_t> currentLevel;
+        if (LevelControl::Attributes::CurrentLevel::Get(endpoint, currentLevel) == Status::Success && !currentLevel.IsNull())
+        {
+            runtime_.light.level = ResolveLevelForCluster(endpoint, true, currentLevel.Value());
+        }
+        chip::DeviceLayer::PlatformMgr().UnlockChipStack();
     }
 
     runtime_.light.on = on;
-    if (on && runtime_.light.level <= 1)
-    {
-        runtime_.light.level = 254;
-        if (last_on_.valid)
-        {
-            last_on_.light.level = runtime_.light.level;
-        }
-    }
     ScheduleFade(FadeKind::kOnOff, true);
 }
 
@@ -627,8 +632,19 @@ void RgbcwPwmDriver::SetColorTemperatureMireds(uint16_t mireds)
 
 void RgbcwPwmDriver::ApplyClusterLevel(chip::EndpointId endpoint, uint8_t cluster_level)
 {
+    if (runtime_.light.on && cluster_level <= 1)
+    {
+        return;
+    }
+
+    if (!runtime_.light.on)
+    {
+        runtime_.light.level = cluster_level;
+        return;
+    }
+
     chip::DeviceLayer::PlatformMgr().LockChipStack();
-    const uint8_t level = ResolveLevelForCluster(endpoint, runtime_.light.on, cluster_level);
+    const uint8_t level = ResolveLevelForCluster(endpoint, true, cluster_level);
     chip::DeviceLayer::PlatformMgr().UnlockChipStack();
     SetLevel(level);
 }
@@ -640,9 +656,13 @@ uint8_t RgbcwPwmDriver::ResolveLevelForCluster(chip::EndpointId endpoint, bool o
     {
         return runtime_.light.level;
     }
-    if (cluster_level <= 1)
+    if (cluster_level > 1)
     {
         return cluster_level;
+    }
+    if (runtime_.light.level > 1)
+    {
+        return runtime_.light.level;
     }
     return cluster_level;
 }

@@ -19,13 +19,13 @@ inline bool StartStripEffect(ws2814_effects::Mode mode, uint8_t speed = 128, uin
 inline bool StopStripEffect() { return ws2814_effects::Stop(); }
 inline bool NextStripEffect() { return ws2814_effects::NextMode(); }
 
-inline void SetOn(bool on)
+inline void SetOn(chip::EndpointId ep, bool on)
 {
     if (!on)
     {
         (void) ws2814_effects::Stop();
     }
-    RgbcwStripDriver::SetOn(on);
+    RgbcwStripDriver::SetOn(ep, on);
 }
 inline void SetLevel(uint8_t level)
 {

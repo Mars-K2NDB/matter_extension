@@ -60,4 +60,7 @@ void UpdateLightStateFromAttributeChange(chip::EndpointId endpoint, chip::Cluste
 /** Report current light attributes to subscribed commissioners. */
 void ReportCurrentLightEffect(chip::EndpointId endpoint);
 
+/** Clear LevelControl OnLevel so OnOff uses CurrentLevel. Caller holds chip stack lock. */
+void PrepareLevelControlForOnOffRestore(chip::EndpointId endpoint);
+
 } // namespace device_user_flash

@@ -5,7 +5,7 @@
 namespace light_output {
 
 inline void Init() { RgbcwPwmDriver::Init(); }
-inline void SetOn(bool on) { RgbcwPwmDriver::SetOn(on); }
+inline void SetOn(chip::EndpointId ep, bool on) { RgbcwPwmDriver::SetOn(ep, on); }
 inline void SetLevel(uint8_t level) { RgbcwPwmDriver::SetLevel(level); }
 inline void SetHueSat(uint8_t h, uint8_t s) { RgbcwPwmDriver::SetHueSat(h, s); }
 inline void SetColorTemperatureMireds(uint16_t m) { RgbcwPwmDriver::SetColorTemperatureMireds(m); }

@@ -561,7 +561,7 @@ void CtDualPwmDriver::ForceOffForFault()
     route_disabled_ = true;
 }
 
-void CtDualPwmDriver::SetOn(bool on)
+void CtDualPwmDriver::SetOn(chip::EndpointId endpoint, bool on)
 {
     if (on && OvercurrentProtector::BlocksTurnOn())
     {
@@ -571,26 +571,32 @@ void CtDualPwmDriver::SetOn(bool on)
 
     if (!on && on_)
     {
-        last_on_valid_    = true;
-        last_on_level_    = level_;
+        last_on_valid_     = true;
+        last_on_level_     = level_;
         last_on_ct_mireds_ = ct_mireds_;
     }
 
-    if (on && !on_ && last_on_valid_)
+    if (on)
     {
-        level_    = last_on_level_;
-        ct_mireds_ = last_on_ct_mireds_;
+        using namespace chip::app::Clusters;
+        using namespace chip::app::DataModel;
+        using namespace chip::Protocols::InteractionModel;
+
+        chip::DeviceLayer::PlatformMgr().LockChipStack();
+        Nullable<uint8_t> currentLevel;
+        if (LevelControl::Attributes::CurrentLevel::Get(endpoint, currentLevel) == Status::Success && !currentLevel.IsNull())
+        {
+            level_ = ResolveLevelForCluster(endpoint, true, currentLevel.Value());
+        }
+        uint16_t ct_mireds = ct_mireds_;
+        if (ColorControl::Attributes::ColorTemperatureMireds::Get(endpoint, &ct_mireds) == Status::Success)
+        {
+            ct_mireds_ = std::clamp(ct_mireds, kCtMinMireds, kCtMaxMireds);
+        }
+        chip::DeviceLayer::PlatformMgr().UnlockChipStack();
     }
 
     on_ = on;
-    if (on && level_ <= 1)
-    {
-        level_ = 254;
-        if (last_on_valid_)
-        {
-            last_on_level_ = level_;
-        }
-    }
     ScheduleFade(FadeKind::kOnOff, true);
     ChipLogProgress(Zcl, "CtPwm On -> %u (ct=%u level=%u)", on, ct_mireds_, level_);
 }
@@ -676,7 +682,7 @@ uint8_t CtDualPwmDriver::ResolveLevelForCluster(chip::EndpointId endpoint, bool 
         return level_;
     }
 
-    return 254;
+    return cluster_level;
 }
 
 void CtDualPwmDriver::RefreshFromMatterEndpoint(chip::EndpointId endpoint)

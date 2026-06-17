@@ -20,7 +20,7 @@ public:
     static constexpr uint16_t kDefaultCtMireds = 250;
 
     static void Init();
-    static void SetOn(bool on);
+    static void SetOn(chip::EndpointId endpoint, bool on);
     static void SetLevel(uint8_t level);
     static void SetHueSat(uint8_t hue, uint8_t saturation);
     static void SetXy(uint16_t current_x, uint16_t current_y);

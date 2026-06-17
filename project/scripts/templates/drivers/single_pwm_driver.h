@@ -17,7 +17,7 @@ class SinglePwmDriver
 {
 public:
     static void Init();
-    static void SetOn(bool on);
+    static void SetOn(chip::EndpointId endpoint, bool on);
     static void SetLevel(uint8_t level);
     static void ApplyClusterLevel(chip::EndpointId endpoint, uint8_t cluster_level);
     static void SyncFromMatterEndpoint(chip::EndpointId endpoint);

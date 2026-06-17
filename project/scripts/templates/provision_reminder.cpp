@@ -48,7 +48,7 @@ void CancelTimers()
 void RestoreMatterLightOutput()
 {
     light_output::SyncFromMatterEndpoint(LIGHT_ENDPOINT);
-    light_output::SetOn(false);
+    light_output::SetOn(LIGHT_ENDPOINT, false);
 }
 
 void StopActive(StopMode mode)

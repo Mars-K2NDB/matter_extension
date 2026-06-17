@@ -161,7 +161,8 @@ RgbcwStripDriver::ColorPath RgbcwStripDriver::ResolveColorPathFromMatter(chip::E
 void RgbcwStripDriver::Init()
 {
     (void) ws2814_strip::Init();
-    SetOn(false);
+    on_ = false;
+    ApplyOutputImmediate();
 }
 
 void RgbcwStripDriver::ComputeTargetOutput(Rgbw1024& out)
@@ -431,38 +432,44 @@ void RgbcwStripDriver::ScheduleFade(FadeKind kind, bool restart_fade)
 #endif // STRIP_FADE_ENABLED
 }
 
-void RgbcwStripDriver::SetOn(bool on)
+void RgbcwStripDriver::SetOn(chip::EndpointId endpoint, bool on)
 {
     if (!on && on_)
     {
-        last_on_valid_    = true;
-        last_on_level_    = level_;
-        last_on_ct_mireds_ = ct_mireds_;
+        last_on_valid_       = true;
+        last_on_level_       = level_;
+        last_on_ct_mireds_   = ct_mireds_;
         last_on_use_ct_      = (color_path_ == ColorPath::kCt);
         last_on_color_path_  = color_path_;
-        last_on_hue_        = hue_;
-        last_on_sat_        = sat_;
+        last_on_hue_         = hue_;
+        last_on_sat_         = sat_;
     }
 
     if (on && !on_ && last_on_valid_)
     {
-        level_       = last_on_level_;
         ct_mireds_    = last_on_ct_mireds_;
         color_path_   = last_on_color_path_;
         last_on_use_ct_ = (color_path_ == ColorPath::kCt);
-        hue_         = last_on_hue_;
-        sat_         = last_on_sat_;
+        hue_          = last_on_hue_;
+        sat_          = last_on_sat_;
+    }
+
+    if (on)
+    {
+        using namespace chip::app::Clusters;
+        using namespace chip::app::DataModel;
+        using namespace chip::Protocols::InteractionModel;
+
+        chip::DeviceLayer::PlatformMgr().LockChipStack();
+        Nullable<uint8_t> currentLevel;
+        if (LevelControl::Attributes::CurrentLevel::Get(endpoint, currentLevel) == Status::Success && !currentLevel.IsNull())
+        {
+            level_ = ResolveLevelForCluster(endpoint, true, currentLevel.Value());
+        }
+        chip::DeviceLayer::PlatformMgr().UnlockChipStack();
     }
 
     on_ = on;
-    if (on && level_ <= 1)
-    {
-        level_ = 254;
-        if (last_on_valid_)
-        {
-            last_on_level_ = level_;
-        }
-    }
     ScheduleFade(FadeKind::kOnOff, true);
 }
 
@@ -542,8 +549,19 @@ void RgbcwStripDriver::SetColorTemperatureMireds(uint16_t mireds)
 
 void RgbcwStripDriver::ApplyClusterLevel(chip::EndpointId endpoint, uint8_t cluster_level)
 {
+    if (on_ && cluster_level <= 1)
+    {
+        return;
+    }
+
+    if (!on_)
+    {
+        level_ = cluster_level;
+        return;
+    }
+
     chip::DeviceLayer::PlatformMgr().LockChipStack();
-    const uint8_t level = ResolveLevelForCluster(endpoint, on_, cluster_level);
+    const uint8_t level = ResolveLevelForCluster(endpoint, true, cluster_level);
     chip::DeviceLayer::PlatformMgr().UnlockChipStack();
     SetLevel(level);
 }
@@ -555,9 +573,13 @@ uint8_t RgbcwStripDriver::ResolveLevelForCluster(chip::EndpointId endpoint, bool
     {
         return level_;
     }
-    if (cluster_level <= 1)
+    if (cluster_level > 1)
     {
         return cluster_level;
+    }
+    if (level_ > 1)
+    {
+        return level_;
     }
     return cluster_level;
 }

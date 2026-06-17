@@ -5,7 +5,7 @@
 namespace light_output {
 
 inline void Init() { CtDualPwmDriver::Init(); }
-inline void SetOn(bool on) { CtDualPwmDriver::SetOn(on); }
+inline void SetOn(chip::EndpointId ep, bool on) { CtDualPwmDriver::SetOn(ep, on); }
 inline void SetLevel(uint8_t level) { CtDualPwmDriver::SetLevel(level); }
 inline void SetColorTemperatureMireds(uint16_t mireds) { CtDualPwmDriver::SetColorTemperatureMireds(mireds); }
 inline void ApplyClusterLevel(chip::EndpointId ep, uint8_t level) { CtDualPwmDriver::ApplyClusterLevel(ep, level); }

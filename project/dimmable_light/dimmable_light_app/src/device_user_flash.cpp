@@ -367,4 +367,12 @@ void ReportCurrentLightEffect(EndpointId endpoint)
     ChipLogProgress(AppServer, "Light state: reported attributes to subscribers after reconnect");
 }
 
+void PrepareLevelControlForOnOffRestore(EndpointId endpoint)
+{
+    if (LevelControl::Attributes::OnLevel::SetNull(endpoint) == Status::Success)
+    {
+        ChipLogProgress(DeviceLayer, "LevelControl: OnLevel cleared (use CurrentLevel on OnOff)");
+    }
+}
+
 } // namespace device_user_flash

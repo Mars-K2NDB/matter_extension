@@ -61,4 +61,11 @@ void UpdateLightStateFromAttributeChange(chip::EndpointId endpoint, chip::Cluste
 /** Report current light attributes to subscribed commissioners. */
 void ReportCurrentLightEffect(chip::EndpointId endpoint);
 
+/**
+ * Clear LevelControl OnLevel so OnOff on/off uses CurrentLevel (pre-off brightness).
+ * ZAP default 0xFE is 254, not null, which forces 100% on every On command.
+ * Caller must hold the chip stack lock.
+ */
+void PrepareLevelControlForOnOffRestore(chip::EndpointId endpoint);
+
 } // namespace device_user_flash

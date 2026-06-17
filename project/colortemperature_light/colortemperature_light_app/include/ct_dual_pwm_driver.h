@@ -24,7 +24,7 @@ public:
 
     static void LogVersion();
     static void Init();
-    static void SetOn(bool on);
+    static void SetOn(chip::EndpointId endpoint, bool on);
     static void SetLevel(uint8_t level);
     static void SetColorTemperatureMireds(uint16_t mireds);
 
