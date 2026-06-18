@@ -33,8 +33,6 @@ public:
     static void RestoreToPreFault(bool on, uint8_t level, uint16_t ct_mireds);
     static bool GetPreFaultState(bool& on, uint8_t& level, uint16_t& ct_mireds);
     static uint8_t ResolveLevelForCluster(chip::EndpointId endpoint, bool on, uint8_t cluster_level);
-
-    /** Provisioning reminder overlay; does not change Matter light state. */
     static void ApplyProvisionReminderOutput(bool on);
 
 private:
@@ -74,6 +72,11 @@ private:
         uint8_t b    = 0;
         uint8_t cool = 0;
         uint8_t warm = 0;
+
+        bool operator==(const OutputFrame& other) const
+        {
+            return r == other.r && g == other.g && b == other.b && cool == other.cool && warm == other.warm;
+        }
     };
 
     enum class FadeKind : uint8_t
@@ -87,22 +90,30 @@ private:
     {
         OutputFrame start;
         OutputFrame target;
-        FadeKind kind       = FadeKind::kOnOff;
-        uint16_t step       = 0;
+        FadeKind kind        = FadeKind::kOnOff;
+        uint16_t step        = 0;
         uint16_t steps_total = 0;
-        bool active         = false;
+        bool active          = false;
+        uint8_t start_brightness      = 0;
+        uint8_t target_brightness     = 0;
+        uint16_t start_warm_ratio_fp  = 0;
+        uint16_t target_warm_ratio_fp = 0;
     };
 
     static void SaveStateBeforeFault();
     static void PwmOutputKillRegisters();
     static void PwmOutputRestoreRegisters();
     static void CancelFadeTimer();
+    static bool EnsurePwmReadyForOutput();
+    static void CompleteFadeNow();
+    static void StartFadeTimer(uint16_t duration_ms);
     static void ScheduleFade(FadeKind kind, bool restart_fade);
+    static void ScheduleLightFade(FadeKind kind, bool restart_fade);
     static void ApplyFadeFrame(uint16_t step);
     static void OnFadeTimer(chip::System::Layer* layer, void* app_state);
     static void ComputeTargetDuties(uint8_t& r, uint8_t& g, uint8_t& b, uint8_t& cool, uint8_t& warm);
+    static void RefreshColorModeFromMatter(chip::EndpointId endpoint);
     static void ApplyDisplayDuties(uint8_t r, uint8_t g, uint8_t b, uint8_t cool, uint8_t warm);
-    static void CaptureLastOnState();
     static void RestoreLastOnStateIfNeeded();
     static void SyncLastOnStateIfOn();
     static void ApplyOutputImmediate();

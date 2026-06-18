@@ -48,8 +48,8 @@
   { (uint16_t)0x0, (uint16_t)0x0, (uint16_t)0x2 }, /* StartUpOnOff */ \
 \
   /* Endpoint: 1, Cluster: Level Control (server) */ \
-  { (uint16_t)0x3, (uint16_t)0x0, (uint16_t)0x3 }, /* Options */ \
-  { (uint16_t)0xFE, (uint16_t)0x1, (uint16_t)0xFE }, /* OnLevel */ \
+  { (uint16_t)0x1, (uint16_t)0x0, (uint16_t)0x3 }, /* Options */ \
+  { (uint16_t)0xFF, (uint16_t)0x1, (uint16_t)0xFE }, /* OnLevel */ \
 \
   /* Endpoint: 1, Cluster: Color Control (server) */ \
   { (uint16_t)0x0, (uint16_t)0x0, (uint16_t)0x1 }, /* Options */ \

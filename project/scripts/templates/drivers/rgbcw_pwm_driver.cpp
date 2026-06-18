@@ -41,9 +41,8 @@ constexpr uint16_t kFadeDurationOnMs    = 500;
 constexpr uint16_t kFadeDurationOffMs   = 350;
 constexpr uint16_t kFadeDurationLevelMs = 320;
 constexpr uint16_t kFadeDurationColorMs = 650;
+constexpr uint16_t kFadeDurationCtMs    = 600;
 constexpr uint32_t kFadeFpOne = 65535U;
-
-sl_pwm_instance_t * const kAllPwms[] = { &sl_pwm_pwm0, &sl_pwm_pwm1, &sl_pwm_pwm2, &sl_pwm_pwm3, &sl_pwm_pwm4 };
 
 // SS6 PWM instance mapping (按实例号对应颜色通道):
 //   pwm0/pwm1/pwm2 -> R/G/B
@@ -118,28 +117,18 @@ void PwmCompareZero(const sl_pwm_instance_t & pwm)
 
 void RestorePwmPinMode(const sl_pwm_instance_t & pwm, bool activeHigh)
 {
-    sl_gpio_t gpio = {
-        .port = pwm.port,
-        .pin  = pwm.pin,
-    };
+    sl_gpio_t gpio = { .port = pwm.port, .pin = pwm.pin };
     (void) sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_PUSH_PULL, activeHigh);
 }
 
 void GpioForceOff(const sl_pwm_instance_t & pwm, bool activeHigh)
 {
-    sl_gpio_t gpio = {
-        .port = pwm.port,
-        .pin  = pwm.pin,
-    };
+    sl_gpio_t gpio = { .port = pwm.port, .pin = pwm.pin };
     (void) sl_gpio_set_pin_mode(&gpio, SL_GPIO_MODE_PUSH_PULL, activeHigh ? 0 : 1);
 }
 
 void KillPwmInstance(sl_pwm_instance_t * pwm)
 {
-    if (pwm == nullptr)
-    {
-        return;
-    }
     PwmCompareZero(*pwm);
     PwmRouteDisable(*pwm);
     GpioForceOff(*pwm, ActiveHighFor(pwm));
@@ -147,10 +136,6 @@ void KillPwmInstance(sl_pwm_instance_t * pwm)
 
 void RestorePwmInstance(sl_pwm_instance_t * pwm)
 {
-    if (pwm == nullptr)
-    {
-        return;
-    }
     RestorePwmPinMode(*pwm, ActiveHighFor(pwm));
     sl_pwm_start(pwm);
 }
@@ -180,21 +165,83 @@ uint32_t SmoothstepT(uint16_t step, uint16_t total)
         return kFadeFpOne;
     }
 
-    const uint32_t t = (static_cast<uint32_t>(step) * kFadeFpOne) / total;
+    const uint32_t t  = (static_cast<uint32_t>(step) * kFadeFpOne) / total;
     const uint32_t t2 = (t * t) / kFadeFpOne;
     return (t2 * (3U * kFadeFpOne - 2U * t)) / kFadeFpOne;
 }
 
-uint8_t InterpolateDuty(uint8_t from, uint8_t to, uint16_t step, uint16_t total)
+template <typename T>
+T InterpolateScalar(T from, T to, uint16_t step, uint16_t total)
 {
     if (total == 0 || step >= total)
     {
         return to;
     }
 
-    const uint32_t t = SmoothstepT(step, total);
+    const uint32_t t    = SmoothstepT(step, total);
     const int32_t delta = static_cast<int32_t>(to) - static_cast<int32_t>(from);
-    return static_cast<uint8_t>(static_cast<int32_t>(from) + (delta * static_cast<int32_t>(t)) / static_cast<int32_t>(kFadeFpOne));
+    return static_cast<T>(static_cast<int32_t>(from) +
+                          (delta * static_cast<int32_t>(t)) / static_cast<int32_t>(kFadeFpOne));
+}
+
+uint16_t WarmRatioFpFromMireds(uint16_t mireds)
+{
+    const uint16_t ct = std::clamp(mireds, RgbcwPwmDriver::kCtMinMireds, RgbcwPwmDriver::kCtMaxMireds);
+    const uint32_t warmWeight = ct - RgbcwPwmDriver::kCtMinMireds;
+    const uint32_t weightSum  = (RgbcwPwmDriver::kCtMaxMireds - RgbcwPwmDriver::kCtMinMireds);
+    if (weightSum == 0)
+    {
+        return kFadeFpOne / 2U;
+    }
+    return static_cast<uint16_t>((warmWeight * kFadeFpOne) / weightSum);
+}
+
+uint16_t WarmRatioFpFromDuties(uint8_t coolDuty, uint8_t warmDuty)
+{
+    const uint32_t sum = static_cast<uint32_t>(coolDuty) + static_cast<uint32_t>(warmDuty);
+    if (sum == 0)
+    {
+        return 0;
+    }
+    return static_cast<uint16_t>((static_cast<uint32_t>(warmDuty) * kFadeFpOne) / sum);
+}
+
+void DutiesFromBrightnessAndRatio(uint8_t brightness, uint16_t warmRatioFp, uint8_t& coolDuty, uint8_t& warmDuty)
+{
+    if (brightness == 0)
+    {
+        coolDuty = 0;
+        warmDuty = 0;
+        return;
+    }
+
+    const uint32_t warmProduct = static_cast<uint32_t>(brightness) * warmRatioFp;
+    const uint32_t coolProduct = static_cast<uint32_t>(brightness) * (kFadeFpOne - warmRatioFp);
+    warmDuty                   = static_cast<uint8_t>(warmProduct / kFadeFpOne);
+    coolDuty                   = static_cast<uint8_t>(coolProduct / kFadeFpOne);
+
+    const uint8_t assigned = static_cast<uint8_t>(warmDuty + coolDuty);
+    if (assigned < brightness)
+    {
+        const uint8_t remainder = static_cast<uint8_t>(brightness - assigned);
+        if ((warmProduct % kFadeFpOne) >= (coolProduct % kFadeFpOne))
+        {
+            warmDuty = static_cast<uint8_t>(warmDuty + remainder);
+        }
+        else
+        {
+            coolDuty = static_cast<uint8_t>(coolDuty + remainder);
+        }
+    }
+}
+
+bool IsCtColorMode(chip::app::Clusters::ColorControl::ColorModeEnum color_mode,
+                   chip::app::Clusters::ColorControl::EnhancedColorModeEnum enhanced_mode)
+{
+    using chip::app::Clusters::ColorControl::ColorModeEnum;
+    using chip::app::Clusters::ColorControl::EnhancedColorModeEnum;
+    return (color_mode == ColorModeEnum::kColorTemperatureMireds) ||
+           (enhanced_mode == EnhancedColorModeEnum::kColorTemperatureMireds);
 }
 
 void HsvToRgb(uint8_t hue, uint8_t sat, uint8_t brightness, uint8_t& r, uint8_t& g, uint8_t& b)
@@ -251,21 +298,6 @@ void HsvToRgb(uint8_t hue, uint8_t sat, uint8_t brightness, uint8_t& r, uint8_t&
     b = static_cast<uint8_t>(bf * 100.0f);
 }
 
-void CtToCoolWarm(uint16_t mireds, uint8_t brightness, uint8_t& cool, uint8_t& warm)
-{
-    const uint16_t ct = std::clamp(mireds, RgbcwPwmDriver::kCtMinMireds, RgbcwPwmDriver::kCtMaxMireds);
-    const uint32_t warmWeight = ct - RgbcwPwmDriver::kCtMinMireds;
-    const uint32_t sum        = (RgbcwPwmDriver::kCtMaxMireds - RgbcwPwmDriver::kCtMinMireds);
-    if (sum == 0)
-    {
-        cool = brightness / 2;
-        warm = brightness - cool;
-        return;
-    }
-    warm = static_cast<uint8_t>((brightness * warmWeight) / sum);
-    cool = brightness - warm;
-}
-
 } // namespace
 
 void RgbcwPwmDriver::SaveStateBeforeFault()
@@ -275,13 +307,8 @@ void RgbcwPwmDriver::SaveStateBeforeFault()
         return;
     }
 
-    fault_.light.on       = runtime_.light.on;
-    fault_.light.level    = runtime_.light.level;
-    fault_.light.ct_mireds = runtime_.light.ct_mireds;
-    fault_.light.use_ct    = runtime_.light.use_ct;
-    fault_.light.hue      = runtime_.light.hue;
-    fault_.light.saturation      = runtime_.light.saturation;
-    fault_.saved    = true;
+    fault_.light = runtime_.light;
+    fault_.saved = true;
 }
 
 void RgbcwPwmDriver::PwmOutputKillRegisters()
@@ -298,13 +325,8 @@ void RgbcwPwmDriver::PwmOutputRestoreRegisters()
 
 void RgbcwPwmDriver::Init()
 {
-    for (auto * pwm : kAllPwms)
-    {
-        sl_pwm_start(pwm);
-    }
-    runtime_.pwm_started    = true;
-    runtime_.route_disabled = false;
-    runtime_.light.on       = false;
+    runtime_.light.on = false;
+    PwmOutputRestoreRegisters();
     ApplyOutputImmediate();
 }
 
@@ -314,32 +336,20 @@ uint8_t RgbcwPwmDriver::LevelToBrightnessPercent(uint8_t level)
     {
         return 0;
     }
-    return static_cast<uint8_t>((static_cast<uint32_t>(level) * 100U) / 254U);
+    return static_cast<uint8_t>(1U + (static_cast<uint32_t>(level - 1U) * 99U) / 253U);
 }
 
 void RgbcwPwmDriver::ApplyOutputImmediate()
 {
     CancelFadeTimer();
-
-    if (OvercurrentProtector::IsFaultActive())
+    if (!EnsurePwmReadyForOutput())
     {
-        PwmOutputKillRegisters();
-        runtime_.route_disabled = true;
         return;
     }
 
-    if (runtime_.route_disabled || !runtime_.pwm_started)
-    {
-        PwmOutputRestoreRegisters();
-    }
-
-    uint8_t r = 0;
-    uint8_t g = 0;
-    uint8_t b = 0;
-    uint8_t cool = 0;
-    uint8_t warm = 0;
-    ComputeTargetDuties(r, g, b, cool, warm);
-    ApplyDisplayDuties(r, g, b, cool, warm);
+    OutputFrame frame{};
+    ComputeTargetDuties(frame.r, frame.g, frame.b, frame.cool, frame.warm);
+    ApplyDisplayDuties(frame.r, frame.g, frame.b, frame.cool, frame.warm);
 }
 
 void RgbcwPwmDriver::ApplyProvisionReminderOutput(bool on)
@@ -350,23 +360,18 @@ void RgbcwPwmDriver::ApplyProvisionReminderOutput(bool on)
     }
 
     CancelFadeTimer();
-
-    if (runtime_.route_disabled || !runtime_.pwm_started)
+    if (!EnsurePwmReadyForOutput())
     {
-        PwmOutputRestoreRegisters();
+        return;
     }
 
+    uint8_t cool = 0;
+    uint8_t warm = 0;
     if (on)
     {
-        uint8_t cool = 0;
-        uint8_t warm = 0;
-        CtToCoolWarm(kCtMinMireds, 100, cool, warm);
-        ApplyDisplayDuties(0, 0, 0, cool, warm);
+        DutiesFromBrightnessAndRatio(100, 0, cool, warm);
     }
-    else
-    {
-        ApplyDisplayDuties(0, 0, 0, 0, 0);
-    }
+    ApplyDisplayDuties(0, 0, 0, cool, warm);
 }
 
 void RgbcwPwmDriver::ComputeTargetDuties(uint8_t& r, uint8_t& g, uint8_t& b, uint8_t& cool, uint8_t& warm)
@@ -385,7 +390,7 @@ void RgbcwPwmDriver::ComputeTargetDuties(uint8_t& r, uint8_t& g, uint8_t& b, uin
     const uint8_t br = LevelToBrightnessPercent(runtime_.light.level);
     if (runtime_.light.use_ct)
     {
-        CtToCoolWarm(runtime_.light.ct_mireds, br, cool, warm);
+        DutiesFromBrightnessAndRatio(br, WarmRatioFpFromMireds(runtime_.light.ct_mireds), cool, warm);
         return;
     }
 
@@ -394,18 +399,15 @@ void RgbcwPwmDriver::ComputeTargetDuties(uint8_t& r, uint8_t& g, uint8_t& b, uin
 
 void RgbcwPwmDriver::ApplyDisplayDuties(uint8_t r, uint8_t g, uint8_t b, uint8_t cool, uint8_t warm)
 {
-    SetAllDuty(r, g, b, cool, warm);
-    display_.r    = r;
-    display_.g    = g;
-    display_.b    = b;
-    display_.cool = cool;
-    display_.warm = warm;
-}
+    if (runtime_.light.use_ct)
+    {
+        r = 0;
+        g = 0;
+        b = 0;
+    }
 
-void RgbcwPwmDriver::CaptureLastOnState()
-{
-    last_on_.valid = true;
-    last_on_.light = runtime_.light;
+    SetAllDuty(r, g, b, cool, warm);
+    display_ = { r, g, b, cool, warm };
 }
 
 void RgbcwPwmDriver::RestoreLastOnStateIfNeeded()
@@ -419,11 +421,10 @@ void RgbcwPwmDriver::RestoreLastOnStateIfNeeded()
 
 void RgbcwPwmDriver::SyncLastOnStateIfOn()
 {
-    if (!runtime_.light.on)
+    if (runtime_.light.on)
     {
-        return;
+        last_on_ = { true, runtime_.light };
     }
-    CaptureLastOnState();
 }
 
 void RgbcwPwmDriver::CancelFadeTimer()
@@ -439,25 +440,77 @@ void RgbcwPwmDriver::CancelFadeTimer()
     fade_.active = false;
 }
 
-void RgbcwPwmDriver::ApplyFadeFrame(uint16_t step)
+bool RgbcwPwmDriver::EnsurePwmReadyForOutput()
 {
     if (OvercurrentProtector::IsFaultActive())
     {
         PwmOutputKillRegisters();
         runtime_.route_disabled = true;
-        return;
+        return false;
     }
 
     if (runtime_.route_disabled || !runtime_.pwm_started)
     {
         PwmOutputRestoreRegisters();
     }
+    return true;
+}
 
-    ApplyDisplayDuties(InterpolateDuty(fade_.start.r, fade_.target.r, step, fade_.steps_total),
-                       InterpolateDuty(fade_.start.g, fade_.target.g, step, fade_.steps_total),
-                       InterpolateDuty(fade_.start.b, fade_.target.b, step, fade_.steps_total),
-                       InterpolateDuty(fade_.start.cool, fade_.target.cool, step, fade_.steps_total),
-                       InterpolateDuty(fade_.start.warm, fade_.target.warm, step, fade_.steps_total));
+void RgbcwPwmDriver::CompleteFadeNow()
+{
+    CancelFadeTimer();
+    ApplyFadeFrame(fade_.steps_total > 0 ? fade_.steps_total : 1);
+}
+
+void RgbcwPwmDriver::StartFadeTimer(uint16_t duration_ms)
+{
+    fade_.step        = 0;
+    fade_.steps_total = std::max<uint16_t>(duration_ms / static_cast<uint16_t>(kFadeTickMs), 1U);
+
+    CancelFadeTimer();
+    ApplyFadeFrame(0);
+
+    chip::DeviceLayer::PlatformMgr().LockChipStack();
+    const CHIP_ERROR err = chip::DeviceLayer::SystemLayer().StartTimer(
+        chip::System::Clock::Milliseconds32(kFadeTickMs), OnFadeTimer, nullptr);
+    chip::DeviceLayer::PlatformMgr().UnlockChipStack();
+    if (err != CHIP_NO_ERROR)
+    {
+        ApplyOutputImmediate();
+        return;
+    }
+    fade_.active = true;
+}
+
+void RgbcwPwmDriver::ApplyFadeFrame(uint16_t step)
+{
+    if (!EnsurePwmReadyForOutput())
+    {
+        return;
+    }
+
+    if (runtime_.light.use_ct)
+    {
+        const uint8_t brightness =
+            InterpolateScalar(fade_.start_brightness, fade_.target_brightness, step, fade_.steps_total);
+        uint16_t warmRatioFp = fade_.target_warm_ratio_fp;
+        if (fade_.kind != FadeKind::kLevel)
+        {
+            warmRatioFp = InterpolateScalar(fade_.start_warm_ratio_fp, fade_.target_warm_ratio_fp, step, fade_.steps_total);
+        }
+
+        uint8_t cool = 0;
+        uint8_t warm = 0;
+        DutiesFromBrightnessAndRatio(brightness, warmRatioFp, cool, warm);
+        ApplyDisplayDuties(0, 0, 0, cool, warm);
+        return;
+    }
+
+    ApplyDisplayDuties(InterpolateScalar(fade_.start.r, fade_.target.r, step, fade_.steps_total),
+                       InterpolateScalar(fade_.start.g, fade_.target.g, step, fade_.steps_total),
+                       InterpolateScalar(fade_.start.b, fade_.target.b, step, fade_.steps_total),
+                       InterpolateScalar(fade_.start.cool, fade_.target.cool, step, fade_.steps_total),
+                       InterpolateScalar(fade_.start.warm, fade_.target.warm, step, fade_.steps_total));
 }
 
 void RgbcwPwmDriver::OnFadeTimer(chip::System::Layer* layer, void* app_state)
@@ -491,23 +544,72 @@ void RgbcwPwmDriver::ScheduleFade(FadeKind kind, bool restart_fade)
         return;
     }
 
-    uint8_t targetR = 0;
-    uint8_t targetG = 0;
-    uint8_t targetB = 0;
-    uint8_t targetCool = 0;
-    uint8_t targetWarm = 0;
-    ComputeTargetDuties(targetR, targetG, targetB, targetCool, targetWarm);
-
-    fade_.target.r    = targetR;
-    fade_.target.g    = targetG;
-    fade_.target.b    = targetB;
-    fade_.target.cool = targetCool;
-    fade_.target.warm = targetWarm;
-
-    if (kind == FadeKind::kColor && fade_.active && fade_.kind == FadeKind::kColor && !restart_fade)
+    const FadeKind previousKind = fade_.kind;
+    uint16_t duration_ms        = kFadeDurationLevelMs;
+    if (kind == FadeKind::kOnOff)
     {
-        if (display_.r == fade_.target.r && display_.g == fade_.target.g && display_.b == fade_.target.b &&
-            display_.cool == fade_.target.cool && display_.warm == fade_.target.warm)
+        duration_ms = runtime_.light.on ? kFadeDurationOnMs : kFadeDurationOffMs;
+    }
+    else if (kind == FadeKind::kColor)
+    {
+        duration_ms = runtime_.light.use_ct ? kFadeDurationCtMs : kFadeDurationColorMs;
+    }
+
+    if (runtime_.light.use_ct)
+    {
+        const uint8_t targetBrightness   = runtime_.light.on ? LevelToBrightnessPercent(runtime_.light.level) : 0;
+        const uint16_t targetWarmRatioFp = WarmRatioFpFromMireds(runtime_.light.ct_mireds);
+        const uint8_t displayBrightness  = static_cast<uint8_t>(display_.cool + display_.warm);
+
+        if (!restart_fade && fade_.active && fade_.kind == kind)
+        {
+            if (kind == FadeKind::kColor)
+            {
+                fade_.target_brightness      = targetBrightness;
+                fade_.target_warm_ratio_fp = targetWarmRatioFp;
+                if (displayBrightness == targetBrightness &&
+                    WarmRatioFpFromDuties(display_.cool, display_.warm) == targetWarmRatioFp)
+                {
+                    CancelFadeTimer();
+                }
+                return;
+            }
+            if (kind == FadeKind::kLevel)
+            {
+                fade_.target_brightness = targetBrightness;
+                return;
+            }
+        }
+
+        fade_.start_brightness     = displayBrightness;
+        fade_.start_warm_ratio_fp = (kind == FadeKind::kLevel || displayBrightness == 0)
+                                        ? targetWarmRatioFp
+                                        : WarmRatioFpFromDuties(display_.cool, display_.warm);
+        fade_.target_brightness     = targetBrightness;
+        fade_.target_warm_ratio_fp = targetWarmRatioFp;
+        fade_.kind                  = kind;
+
+        if (fade_.start_brightness == fade_.target_brightness &&
+            (kind == FadeKind::kLevel || fade_.start_warm_ratio_fp == fade_.target_warm_ratio_fp))
+        {
+            CompleteFadeNow();
+            return;
+        }
+
+        if (restart_fade || !fade_.active || previousKind != kind)
+        {
+            StartFadeTimer(duration_ms);
+        }
+        return;
+    }
+
+    OutputFrame target{};
+    ComputeTargetDuties(target.r, target.g, target.b, target.cool, target.warm);
+    fade_.target = target;
+
+    if (!restart_fade && fade_.active && fade_.kind == FadeKind::kColor && kind == FadeKind::kColor)
+    {
+        if (display_ == fade_.target)
         {
             CancelFadeTimer();
         }
@@ -516,48 +618,44 @@ void RgbcwPwmDriver::ScheduleFade(FadeKind kind, bool restart_fade)
 
     if (!fade_.active || restart_fade || fade_.kind != kind)
     {
-        fade_.start.r    = display_.r;
-        fade_.start.g    = display_.g;
-        fade_.start.b    = display_.b;
-        fade_.start.cool = display_.cool;
-        fade_.start.warm = display_.warm;
+        fade_.start = display_;
     }
 
     fade_.kind = kind;
 
-    if (fade_.start.r == fade_.target.r && fade_.start.g == fade_.target.g && fade_.start.b == fade_.target.b &&
-        fade_.start.cool == fade_.target.cool && fade_.start.warm == fade_.target.warm)
+    if (fade_.start == fade_.target)
     {
-        CancelFadeTimer();
-        ApplyFadeFrame(fade_.steps_total);
+        CompleteFadeNow();
         return;
     }
 
-    uint16_t duration_ms = kFadeDurationLevelMs;
-    if (kind == FadeKind::kOnOff)
-    {
-        duration_ms = runtime_.light.on ? kFadeDurationOnMs : kFadeDurationOffMs;
-    }
-    else if (kind == FadeKind::kColor)
-    {
-        duration_ms = kFadeDurationColorMs;
-    }
+    StartFadeTimer(duration_ms);
+}
 
-    fade_.step       = 0;
-    fade_.steps_total = std::max<uint16_t>(duration_ms / static_cast<uint16_t>(kFadeTickMs), 1U);
-
-    CancelFadeTimer();
-    ApplyFadeFrame(0);
-    chip::DeviceLayer::PlatformMgr().LockChipStack();
-    const CHIP_ERROR err =
-        chip::DeviceLayer::SystemLayer().StartTimer(chip::System::Clock::Milliseconds32(kFadeTickMs), OnFadeTimer, nullptr);
-    chip::DeviceLayer::PlatformMgr().UnlockChipStack();
-    if (err != CHIP_NO_ERROR)
+void RgbcwPwmDriver::ScheduleLightFade(FadeKind kind, bool restart_fade)
+{
+    SyncLastOnStateIfOn();
+    if (runtime_.light.on)
     {
-        ApplyOutputImmediate();
-        return;
+        ScheduleFade(kind, restart_fade);
     }
-    fade_.active = true;
+}
+
+void RgbcwPwmDriver::RefreshColorModeFromMatter(chip::EndpointId endpoint)
+{
+    using namespace chip::app::Clusters;
+
+    ColorControl::ColorModeEnum color_mode = ColorControl::ColorModeEnum::kCurrentHueAndCurrentSaturation;
+    ColorControl::EnhancedColorModeEnum enhanced_mode =
+        ColorControl::EnhancedColorModeEnum::kCurrentHueAndCurrentSaturation;
+
+    ColorControl::Attributes::ColorMode::Get(endpoint, &color_mode);
+    ColorControl::Attributes::EnhancedColorMode::Get(endpoint, &enhanced_mode);
+
+    if (IsCtColorMode(color_mode, enhanced_mode))
+    {
+        runtime_.light.use_ct = true;
+    }
 }
 
 void RgbcwPwmDriver::SetOn(chip::EndpointId endpoint, bool on)
@@ -570,7 +668,7 @@ void RgbcwPwmDriver::SetOn(chip::EndpointId endpoint, bool on)
 
     if (!on && runtime_.light.on)
     {
-        CaptureLastOnState();
+        last_on_ = { true, runtime_.light };
     }
 
     if (on)
@@ -582,6 +680,7 @@ void RgbcwPwmDriver::SetOn(chip::EndpointId endpoint, bool on)
         using namespace chip::Protocols::InteractionModel;
 
         chip::DeviceLayer::PlatformMgr().LockChipStack();
+        RefreshColorModeFromMatter(endpoint);
         Nullable<uint8_t> currentLevel;
         if (LevelControl::Attributes::CurrentLevel::Get(endpoint, currentLevel) == Status::Success && !currentLevel.IsNull())
         {
@@ -597,37 +696,22 @@ void RgbcwPwmDriver::SetOn(chip::EndpointId endpoint, bool on)
 void RgbcwPwmDriver::SetLevel(uint8_t level)
 {
     runtime_.light.level = level;
-    SyncLastOnStateIfOn();
-    if (!runtime_.light.on)
-    {
-        return;
-    }
-    ScheduleFade(FadeKind::kLevel, true);
+    ScheduleLightFade(FadeKind::kLevel, false);
 }
 
 void RgbcwPwmDriver::SetHueSat(uint8_t hue, uint8_t saturation)
 {
-    runtime_.light.hue   = hue;
-    runtime_.light.saturation   = saturation;
-    runtime_.light.use_ct = false;
-    SyncLastOnStateIfOn();
-    if (!runtime_.light.on)
-    {
-        return;
-    }
-    ScheduleFade(FadeKind::kColor, false);
+    runtime_.light.hue        = hue;
+    runtime_.light.saturation = saturation;
+    runtime_.light.use_ct     = false;
+    ScheduleLightFade(FadeKind::kColor, false);
 }
 
 void RgbcwPwmDriver::SetColorTemperatureMireds(uint16_t mireds)
 {
     runtime_.light.ct_mireds = std::clamp(mireds, kCtMinMireds, kCtMaxMireds);
     runtime_.light.use_ct    = true;
-    SyncLastOnStateIfOn();
-    if (!runtime_.light.on)
-    {
-        return;
-    }
-    ScheduleFade(FadeKind::kColor, false);
+    ScheduleLightFade(FadeKind::kColor, false);
 }
 
 void RgbcwPwmDriver::ApplyClusterLevel(chip::EndpointId endpoint, uint8_t cluster_level)
@@ -644,6 +728,7 @@ void RgbcwPwmDriver::ApplyClusterLevel(chip::EndpointId endpoint, uint8_t cluste
     }
 
     chip::DeviceLayer::PlatformMgr().LockChipStack();
+    RefreshColorModeFromMatter(endpoint);
     const uint8_t level = ResolveLevelForCluster(endpoint, true, cluster_level);
     chip::DeviceLayer::PlatformMgr().UnlockChipStack();
     SetLevel(level);
@@ -678,6 +763,8 @@ void RgbcwPwmDriver::SyncFromMatterEndpoint(chip::EndpointId endpoint)
     uint8_t sat = 0;
     uint16_t ct = kDefaultCtMireds;
     ColorControl::ColorModeEnum color_mode = ColorControl::ColorModeEnum::kCurrentHueAndCurrentSaturation;
+    ColorControl::EnhancedColorModeEnum enhanced_mode =
+        ColorControl::EnhancedColorModeEnum::kCurrentHueAndCurrentSaturation;
 
     OnOff::Attributes::OnOff::Get(endpoint, &on);
     chip::app::DataModel::Nullable<uint8_t> currentLevel;
@@ -690,14 +777,15 @@ void RgbcwPwmDriver::SyncFromMatterEndpoint(chip::EndpointId endpoint)
     ColorControl::Attributes::CurrentSaturation::Get(endpoint, &sat);
     ColorControl::Attributes::ColorTemperatureMireds::Get(endpoint, &ct);
     ColorControl::Attributes::ColorMode::Get(endpoint, &color_mode);
+    ColorControl::Attributes::EnhancedColorMode::Get(endpoint, &enhanced_mode);
     chip::DeviceLayer::PlatformMgr().UnlockChipStack();
 
     runtime_.light.on    = on;
     runtime_.light.level = level;
     runtime_.light.hue   = hue;
     runtime_.light.saturation   = sat;
-    runtime_.light.ct_mireds = ct;
-    runtime_.light.use_ct = (color_mode == ColorControl::ColorModeEnum::kColorTemperatureMireds);
+    runtime_.light.ct_mireds = std::clamp(ct, kCtMinMireds, kCtMaxMireds);
+    runtime_.light.use_ct = IsCtColorMode(color_mode, enhanced_mode);
     SyncLastOnStateIfOn();
     ApplyOutputImmediate();
 }
@@ -705,29 +793,21 @@ void RgbcwPwmDriver::SyncFromMatterEndpoint(chip::EndpointId endpoint)
 void RgbcwPwmDriver::ForceOffForFaultFromIsr()
 {
     SaveStateBeforeFault();
-    runtime_.light.on = false;
-    fade_.active = false;
-    display_.r = 0;
-    display_.g = 0;
-    display_.b = 0;
-    display_.cool = 0;
-    display_.warm = 0;
-    PwmOutputKillRegisters();
+    runtime_.light.on       = false;
+    fade_.active            = false;
+    display_                = {};
     runtime_.route_disabled = true;
+    PwmOutputKillRegisters();
 }
 
 void RgbcwPwmDriver::ForceOffForFault()
 {
     SaveStateBeforeFault();
     CancelFadeTimer();
-    runtime_.light.on = false;
-    display_.r = 0;
-    display_.g = 0;
-    display_.b = 0;
-    display_.cool = 0;
-    display_.warm = 0;
-    PwmOutputKillRegisters();
+    runtime_.light.on       = false;
+    display_                = {};
     runtime_.route_disabled = true;
+    PwmOutputKillRegisters();
 }
 
 void RgbcwPwmDriver::RecoverFromFault()
@@ -744,18 +824,17 @@ void RgbcwPwmDriver::RecoverFromFault()
 
 void RgbcwPwmDriver::RestoreToPreFault(bool on, uint8_t level, uint16_t ct_mireds)
 {
-    runtime_.light.on            = on;
-    runtime_.light.level         = level;
-    runtime_.light.ct_mireds      = std::clamp(ct_mireds, kCtMinMireds, kCtMaxMireds);
-    runtime_.light.use_ct         = fault_.light.use_ct;
-    runtime_.light.hue           = fault_.light.hue;
-    runtime_.light.saturation           = fault_.light.saturation;
-    fault_.saved = false;
+    runtime_.light            = fault_.light;
+    runtime_.light.on         = on;
+    runtime_.light.level      = level;
+    runtime_.light.ct_mireds  = std::clamp(ct_mireds, kCtMinMireds, kCtMaxMireds);
+    fault_.saved              = false;
 
     PwmOutputRestoreRegisters();
     ApplyOutputImmediate();
 
-    ChipLogProgress(AppServer, "RgbcwPwm RECOVER: on=%u level=%u ct=%u use_ct=%u", runtime_.light.on, runtime_.light.level, runtime_.light.ct_mireds, runtime_.light.use_ct);
+    ChipLogProgress(AppServer, "RgbcwPwm RECOVER: on=%u level=%u ct=%u use_ct=%u", runtime_.light.on, runtime_.light.level,
+                    runtime_.light.ct_mireds, runtime_.light.use_ct);
 }
 
 bool RgbcwPwmDriver::GetPreFaultState(bool& on, uint8_t& level, uint16_t& ct_mireds)
@@ -764,8 +843,9 @@ bool RgbcwPwmDriver::GetPreFaultState(bool& on, uint8_t& level, uint16_t& ct_mir
     {
         return false;
     }
-    on       = fault_.light.on;
-    level    = fault_.light.level;
+
+    on        = fault_.light.on;
+    level     = fault_.light.level;
     ct_mireds = fault_.light.ct_mireds;
     return true;
 }

@@ -19,6 +19,7 @@
 #include <clusters/ColorControl/AttributeIds.h>
 #include <clusters/ColorControl/Enums.h>
 #include <clusters/LevelControl/AttributeIds.h>
+#include <clusters/LevelControl/Enums.h>
 #include <clusters/OnOff/AttributeIds.h>
 #include <lib/support/BitMask.h>
 #include <lib/support/logging/CHIPLogging.h>
@@ -29,12 +30,33 @@ using namespace chip;
 using namespace chip::app;
 using namespace chip::app::Clusters;
 using namespace chip::DeviceLayer;
+using namespace chip::Protocols::InteractionModel;
 
 CustomerAppTask CustomerAppTask::sAppTask;
 
 namespace {
 
 bool outputs_ready_ = false;
+
+void DisableLevelColorTemperatureCoupling(EndpointId endpoint)
+{
+    BitMask<LevelControl::OptionsBitmap> opts;
+    if (LevelControl::Attributes::Options::Get(endpoint, &opts) != Status::Success)
+    {
+        return;
+    }
+
+    if (!opts.Has(LevelControl::OptionsBitmap::kCoupleColorTempToLevel))
+    {
+        return;
+    }
+
+    opts.Clear(LevelControl::OptionsBitmap::kCoupleColorTempToLevel);
+    if (LevelControl::Attributes::Options::Set(endpoint, opts) == Status::Success)
+    {
+        ChipLogProgress(AppServer, "LevelControl: disabled CoupleColorTempToLevel");
+    }
+}
 
 void NotifyColorTempAttributeReports(EndpointId endpoint)
 {
@@ -108,7 +130,6 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
     VoltageAdcDriver::StartPeriodicSampling();
 
     PlatformMgr().LockChipStack();
-    using namespace chip::Protocols::InteractionModel;
 
     BitMask<ColorControl::ColorCapabilitiesBitmap> caps;
     if (ColorControl::Attributes::ColorCapabilities::Get(LIGHT_ENDPOINT, &caps) == Status::Success)
@@ -121,6 +142,7 @@ CHIP_ERROR CustomerAppTask::InitLightImpl()
 
     device_user_flash::PrepareLevelControlForOnOffRestore(LIGHT_ENDPOINT);
     device_user_flash::ApplyCachedLightStateToMatter(LIGHT_ENDPOINT);
+    DisableLevelColorTemperatureCoupling(LIGHT_ENDPOINT);
 
     if (!device_user_flash::HasPersistedLightState())
     {
