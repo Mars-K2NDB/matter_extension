@@ -30,9 +30,23 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
               with:
-                  submodules: "true"
+                  submodules: false
+
+            - name: Initialize non-SDK submodules
+              run: |
+                  set -euo pipefail
+                  mapfile -t paths < <(
+                    git config --file .gitmodules --get-regexp '^submodule\..*\.path$' \
+                      | awk '{print $2}' \
+                      | grep -vE 'third_party/simplicity_sdk$|third_party/wifi_sdk$|third_party/third_party_hw_drivers_extension$'
+                  )
+                  git submodule update --init --depth 1 -- "${paths[@]}"
+
+            - name: Cache SDKs
+              uses: ./.github/actions/cache-sdks
+
             - name: Cache tools
               uses: ./.github/actions/cache-tools
             - name: Build ${{ inputs.example-app }}
@@ -65,12 +79,10 @@ jobs:
                       ${{ inputs.build-type == 'custom-sqa' && 'out/*/*/*/artifact/**' || '' }}
                       ${{ inputs.platform == 'sixg301' && 'out/*/*/*/artifact/**' || '' }}
                       ${{ inputs.platform == 'series-3-bootloader' && 'out/*/*/*/artifact/**' || '' }}
-                      ${{ inputs.platform == 'sixg301' && inputs.build-type != 'custom-sqa' && 'out/**/build/debug/*.out' || '' }}
-                      ${{ inputs.platform == 'sixg301' && inputs.build-type != 'custom-sqa' && 'out/**/build/debug/*.map' || '' }}
-                      ${{ inputs.build-type != 'custom-sqa' && 'out/brd4187c/**/build/debug/*.map' || '' }}
-                      ${{ inputs.build-type != 'custom-sqa' && 'out/brd4338a/**/build/debug/*.map' || '' }}
-                      !out/**/*_bootloader/build/debug/*.map
-                      !out/**/*_bootloader/build/debug/*.out
+                      ${{ inputs.platform == 'sixg301' && inputs.build-type != 'custom-sqa' && 'out/**/build/**/*.map' || '' }}
+                      ${{ inputs.build-type != 'custom-sqa' && 'out/brd4187c/**/build/**/*.map' || '' }}
+                      ${{ inputs.build-type != 'custom-sqa' && 'out/brd4338a/**/build/**/*.map' || '' }}
+                      !out/**/*_bootloader/build/**/*.map
                       !out/**/*copy-sources/**
                   if-no-files-found: warn
                   overwrite: true

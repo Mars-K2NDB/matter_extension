@@ -7,10 +7,10 @@ package: matter
 
 sdk_extension:
   - id: matter
-    version: "2.8.1"
+    version: "2.9.0"
     vendor: silabs
   - id: wiseconnect3_sdk
-    version: "4.0.1"
+    version: "4.1.0"
     vendor: silabs
 
 component:
@@ -19,7 +19,9 @@ component:
   - id: matter_wifi_ble
   - id: matter_crypto_tinycrypt_siwx917
 
-  - id: mbedtls_pki_aws
+  - id: mbedtls_x509_use_aws
+    condition: [matter_aws]
+  - id: mbedtls_x509_create_aws
     condition: [matter_aws]
   - id: mbedtls_entropy_default_aws
     condition: [matter_aws]
@@ -34,23 +36,18 @@ component:
   - id: matter_color_control
   - id: matter_descriptor
   - id: matter_diagnostic_logs
-  - id: matter_fixed_label
   - id: matter_general_commissioning
   - id: matter_general_diagnostics
   - id: matter_group_key_mgmt
   - id: matter_groups
-    from: matter
   - id: matter_groupcast
-    from: matter
   - id: matter_identify
   - id: matter_level_control
-  - id: matter_localization_configuration
   - id: matter_network_commissioning
   - id: matter_on_off
   - id: matter_scenes
   - id: matter_operational_credentials
   - id: matter_software_diagnostics
-  - id: matter_time_format_localization
   - id: matter_user_label
   - id: matter_wifi_network_diagnostics
   # Override configuration for JTAG use
@@ -63,6 +60,7 @@ component:
   - id: matter_shell
   - id: matter_default_lcd_config
   - id: matter_log_uart
+  - id: matter_lwip
 
   - id: matter_lighting
 
@@ -160,7 +158,7 @@ template_contribution:
 filter:
   - name: Type
     value:
-      - SoC
+      - SoC Project
   - name: Difficulty
     value:
       - Advanced
@@ -168,15 +166,19 @@ filter:
     value:
       - Matter
 
+tag:
+  - prebuilt_demo
+  - hardware:component:led:2+
+  - hwfilter:board:si91x_b0_board
+  - hwfilter:device:device_si91x
+  - hidden
+
 readme:
   - path: ./README.md
 ui_hints:
   highlight:
     - path: README.md
       focus: false
-
-tag:
-  - hardware:component:led:2+
 
 post_build:
   path: ../../../postbuild/matter_wifi_soc.slpb

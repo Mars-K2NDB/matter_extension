@@ -2,16 +2,53 @@ name: Code Size Check
 permissions:
   contents: read
   pull-requests: read
+  actions: write
 
 on:
+  workflow_dispatch:
+    inputs:
+      example-app: 
+        required: false
+        type: string
+        description: "App name as it appears in the slc/apps directory path (e.g. multi_sensor_app)"
+        default: "multi_sensor_app"
+      transport:
+        required: false
+        type: choice
+        description: "Transport type (e.g. thread, wifi)"
+        default: thread
+        options:
+          - thread
+          - wifi
+      project-type: 
+        required: false
+        type: choice
+        description: "soc or 917 ncp segment in the slcp name"
+        default: soc
+        options:
+          - soc
+          - 917_ncp
+      baseline:
+        required: false
+        type: string
+        description: "Branch baseline to compare against"
+        default: "main"
   pull_request:
     types: [opened, synchronize, reopened]
     branches:
       - main
       - "release_*"
+
 concurrency:
     group: code-size-check-${{ github.ref }}
     cancel-in-progress: true
+
+env:
+  EXAMPLE_APP: ${{ inputs.example-app || 'multi_sensor_app'}}
+  TRANSPORT: ${{ inputs.transport || 'thread'}}
+  PROJECT_TYPE: ${{ inputs.project-type || 'soc'}}
+  BASELINE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || inputs.baseline || 'main'}}
+  CODE_SIZE_JSON: ${{ (inputs.transport || 'thread') == 'wifi' && (inputs.project-type || 'soc') == 'soc' && '.github/silabs-code-size-wifi.json' || '.github/silabs-code-size.json' }}
 
 jobs:
     code-size-check:
@@ -19,48 +56,92 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
               with:
-                  submodules: "true"
+                  submodules: false
 
-            - name: Install tools
-              uses: ./.github/actions/install-tools
-            - name: Checkout PR target branch
-              uses: actions/checkout@v6
+            - name: Initialize non-SDK submodules
+              run: |
+                  set -euo pipefail
+                  mapfile -t paths < <(
+                    git config --file .gitmodules --get-regexp '^submodule\..*\.path$' \
+                      | awk '{print $2}' \
+                      | grep -vE 'third_party/simplicity_sdk$|third_party/wifi_sdk$|third_party/third_party_hw_drivers_extension$'
+                  )
+                  git submodule update --init --depth 1 -- "${paths[@]}"
+
+            - name: Cache SDKs
+              uses: ./.github/actions/cache-sdks
+
+            - name: Cache tools
+              uses: ./.github/actions/cache-tools
+
+            - name: Checkout baseline for comparison
+              uses: actions/checkout@v7
               with:
-                  ref: ${{ github.event.pull_request.base.sha }}
+                  ref: ${{ env.BASELINE }}
                   path: baseline
-                  submodules: "true"  
+                  submodules: false
+
+            - name: Initialize non-SDK submodules (baseline)
+              working-directory: baseline
+              run: |
+                  set -euo pipefail
+                  mapfile -t paths < <(
+                    git config --file .gitmodules --get-regexp '^submodule\..*\.path$' \
+                      | awk '{print $2}' \
+                      | grep -vE 'third_party/simplicity_sdk$|third_party/wifi_sdk$|third_party/third_party_hw_drivers_extension$'
+                  )
+                  git submodule update --init --depth 1 -- "${paths[@]}"
+
+            - name: Cache SDKs (baseline)
+              uses: ./.github/actions/cache-sdks
+              with:
+                  working-directory: baseline
             - name: Build code-canary app
               uses: SiliconLabsSoftware/matter_build_action@v2
               with:
-                  json-file-path: ".github/silabs-code-size.json"
-                  path-to-example-app: "./slc/apps/multi_sensor_app/thread/matter_thread_soc_multi_sensor_app_freertos.slcp"
+                  json-file-path: ${{ env.CODE_SIZE_JSON }}
+                  path-to-example-app: "./slc/apps/${{ env.EXAMPLE_APP }}/${{ env.TRANSPORT }}/matter_${{env.TRANSPORT}}_${{ env.PROJECT_TYPE }}_${{ env.EXAMPLE_APP }}_freertos.slcp"
                   example-app: code-canary
                   build-script: "./slc/build.sh"
                   output-directory: " "
                   build-type: "standard"
+
             - name: Move results
               run: |
-                  mv ./out ./current 
+                  mv ./out ./current
 
-            - name: Build code-canary app on PR target
+            - name: Build code-canary app on baseline
               uses: SiliconLabsSoftware/matter_build_action@v2
               with:
-                  json-file-path: ".github/silabs-code-size.json"
-                  path-to-example-app: "./baseline/slc/apps/multi_sensor_app/thread/matter_thread_soc_multi_sensor_app_freertos.slcp"
+                  json-file-path: ${{ env.CODE_SIZE_JSON }}
+                  path-to-example-app: "./baseline/slc/apps/${{ env.EXAMPLE_APP }}/${{ env.TRANSPORT }}/matter_${{env.TRANSPORT}}_${{ env.PROJECT_TYPE }}_${{ env.EXAMPLE_APP }}_freertos.slcp"
                   example-app: code-canary
                   build-script: "./baseline/slc/build.sh"
                   output-directory: " "
                   build-type: "standard"
               env:
                 MATTER_ROOT: ${{ github.workspace }}/baseline
-            - name: Generate Code Size Results and Compare
+
+            - name: Generate Code Size Results and Compare (gcc)
               shell: bash
               run: |
-                  ./slc/script/code_size_result.sh ./current/ current.csv
-                  ./slc/script/code_size_result.sh ./out/ target.csv
-                  cat ./current.csv
-                  cat ./target.csv
-                  python3 ./slc/script/code_size_diff_check.py ./current.csv ./target.csv | tee code_size_report.txt
+                  ./slc/script/code_size_result.sh ./current/ current_gcc.csv code_size_gcc
+                  ./slc/script/code_size_result.sh ./out/     target_gcc.csv  code_size_gcc
+                  cat ./current_gcc.csv
+                  cat ./target_gcc.csv
+                  python3 ./slc/script/code_size_diff_check.py ./current_gcc.csv ./target_gcc.csv --toolchain gcc \
+                      | tee code_size_report_gcc.txt
 
+            - name: Generate Code Size Results and Compare (llvm)
+              ## TODO: Remove the skip condition when wifi on llvm is supported
+              if: always() && env.TRANSPORT != 'wifi'
+              shell: bash
+              run: |
+                  ./slc/script/code_size_result.sh ./current/ current_llvm.csv code_size_llvm
+                  ./slc/script/code_size_result.sh ./out/     target_llvm.csv  code_size_llvm
+                  cat ./current_llvm.csv
+                  cat ./target_llvm.csv
+                  python3 ./slc/script/code_size_diff_check.py ./current_llvm.csv ./target_llvm.csv --toolchain llvm \
+                      | tee code_size_report_llvm.txt

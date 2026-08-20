@@ -83,11 +83,15 @@ components:
   - matter_air_quality
   - matter_air_quality_app
   - matter_air_quality_sensor
+  - matter_ambient_context_sensing
   - matter_application_basic
   - matter_application_launcher
   - matter_audio_output
+  - matter_av_analysis
   - matter_aws
   - matter_aws_ota
+  - matter_aws_transport_lwip
+  - matter_aws_transport_nwp
   - matter_basic_information
   - matter_bindings
   - matter_ble
@@ -131,12 +135,15 @@ components:
   - matter_dishwasher_alarm
   - matter_door_lock
   - matter_drivers_series_2
+  - matter_dual_stack
+  - matter_dynamic_lighting
   - matter_ecosystem_information
   - matter_efr32_ncp
   - matter_electrical_energy_measurement
   - matter_electrical_grid_conditions
   - matter_electrical_power_measurement
   - matter_electrical_sensor
+  - matter_em4
   - matter_em_triggers
   - matter_em_utils
   - matter_energy_evse
@@ -156,6 +163,7 @@ components:
   - matter_group_key_mgmt
   - matter_groupcast
   - matter_groups
+  - matter_humidistat
   - matter_icd_checkin_sender
   - matter_icd_core
   - matter_icd_management
@@ -182,6 +190,7 @@ components:
   - matter_lwip
   - matter_lwip_modified
   - matter_lwip_support
+  - matter_media_file_management
   - matter_media_input
   - matter_media_playback
   - matter_memory_monitoring
@@ -227,10 +236,12 @@ components:
   - matter_pressure_measurement
   - matter_provision_default
   - matter_provision_flash
+  - matter_proximity_ranging
   - matter_pump_configuration_and_control
   - matter_push_av_stream_transport
   - matter_qr_code
   - matter_rangehood
+  - matter_read_client
   - matter_refrigerator
   - matter_refrigerator_alarm
   - matter_relative_humidity_measurement
@@ -238,7 +249,7 @@ components:
   - matter_rgb_leds
   - matter_sample_mei
   - matter_scenes
-  - matter_segger_rtt
+  - matter_scenes_support
   - matter_service_area
   - matter_shell
   - matter_si70xx_sensor
@@ -258,7 +269,7 @@ components:
   - matter_temperature_measurement
   - matter_test_cluster
   - matter_test_event_trigger
-  - matter_testing
+  - matter_tests
   - matter_thermostat
   - matter_thermostat_app
   - matter_thermostat_user_interface_configuration
@@ -276,6 +287,7 @@ components:
   - matter_tracing_runtime_stats
   - matter_uart
   - matter_unit_localization
+  - matter_use_ctm
   - matter_user_label
   - matter_valve_configuration_and_control
   - matter_wake_on_lan
@@ -297,13 +309,15 @@ components:
   - matter_zigbee_sequential
   - matter_zone_management
   - mbedtls_entropy_default_aws
-  - mbedtls_pki_aws
+  - mbedtls_x509_create_aws
+  - mbedtls_x509_use_aws
   - memory
   - messagedef
   - monitoring_table
   - naming
   - nodatamodel
   - notifier
+  - reader
   - records
   - responders
   - server_cluster
@@ -311,6 +325,7 @@ components:
   - siwx917_common
   - siwx917_ncp
   - siwx917_ncp_brd4357a
+  - siwx917_ncp_brd4357c
   - siwx917_tinycrypt
   - syscalls_stub
   - test_paa_store
@@ -324,12 +339,14 @@ extra_files:
   - CODEOWNERS
   - LICENSE
   - README.md
+  - board_compatibility_matrix.html
   - docs/CHERRY_PICKING_CSA_COMMITS.md
   - docs/CONTRIBUTING.md
   - docs/images/silabs-logo.jpg
   - jenkins_integration/Jenkinsfile
   - jenkins_integration/artifacts/artifact_processor.py
   - jenkins_integration/artifacts/artifactory_client.py
+  - jenkins_integration/artifacts/download_coverage_artifact.py
   - jenkins_integration/artifacts/ubai_client.py
   - jenkins_integration/artifacts/upload_artifacts.py
   - jenkins_integration/commit_change_summary.sh
@@ -385,17 +402,17 @@ extra_files:
   - slc/apps/closure_app/wifi/matter_wifi_soc_closure_app_freertos.slcp
   - slc/apps/closure_app/wifi/matter_wifi_soc_closure_app_freertos.slcw
   - slc/apps/closure_app/wifi/pkg.slt
-  - slc/apps/code_size_sensor/config/sl_matter_sensor_config.h
-  - slc/apps/code_size_sensor/data_model/multi-sensor-thread-app.zap
-  - slc/apps/code_size_sensor/include/AppConfig.h
-  - slc/apps/code_size_sensor/include/AppEvent.h
-  - slc/apps/code_size_sensor/include/AppTask.h
-  - slc/apps/code_size_sensor/include/CHIPProjectConfig.h
-  - slc/apps/code_size_sensor/include/SensorManager.h
-  - slc/apps/code_size_sensor/matter_thread_soc_code_size_sensor_freertos.slcp
-  - slc/apps/code_size_sensor/src/AppTask.cpp
-  - slc/apps/code_size_sensor/src/DataModelCallbacks.cpp
-  - slc/apps/code_size_sensor/src/SensorManager.cpp
+  - slc/apps/code_size_sensor/thread/config/sl_matter_sensor_config.h
+  - slc/apps/code_size_sensor/thread/data_model/multi-sensor-thread-app.zap
+  - slc/apps/code_size_sensor/thread/include/AppConfig.h
+  - slc/apps/code_size_sensor/thread/include/AppEvent.h
+  - slc/apps/code_size_sensor/thread/include/AppTask.h
+  - slc/apps/code_size_sensor/thread/include/CHIPProjectConfig.h
+  - slc/apps/code_size_sensor/thread/include/SensorManager.h
+  - slc/apps/code_size_sensor/thread/matter_thread_soc_code_size_sensor_freertos.slcp
+  - slc/apps/code_size_sensor/thread/src/AppTask.cpp
+  - slc/apps/code_size_sensor/thread/src/DataModelCallbacks.cpp
+  - slc/apps/code_size_sensor/thread/src/SensorManager.cpp
   - slc/apps/dishwasher_app/thread/README.md
   - slc/apps/dishwasher_app/thread/matter_thread_soc_dishwasher_app_freertos.slcp
   - slc/apps/dishwasher_app/thread/matter_thread_soc_dishwasher_app_series_2_freertos.slcw
@@ -447,7 +464,6 @@ extra_files:
   - slc/apps/lighting_app/thread/trustzone/matter_thread_soc_lighting_app_trustzone_ns_freertos.slcp
   - slc/apps/lighting_app/thread/trustzone/matter_thread_soc_lighting_app_trustzone_s_freertos.slcp
   - slc/apps/lighting_app/thread/trustzone/matter_thread_soc_lighting_app_trustzone_series_2_freertos.slcw
-  - slc/apps/lighting_app/thread/trustzone/matter_thread_soc_lighting_app_trustzone_series_3_freertos.slcw
   - slc/apps/lighting_app/wifi/README.md
   - slc/apps/lighting_app/wifi/matter_wifi_soc_lighting_app_freertos.slcp
   - slc/apps/lighting_app/wifi/matter_wifi_soc_lighting_app_freertos.slcw
@@ -460,6 +476,8 @@ extra_files:
   - slc/apps/lock_app/thread/pkg.slt
   - slc/apps/lock_app/wifi/README.md
   - slc/apps/lock_app/wifi/README_WiFi.md
+  - slc/apps/lock_app/wifi/matter_wifi_917_ncp_lock_app_dual_stack_freertos.slcp
+  - slc/apps/lock_app/wifi/matter_wifi_917_ncp_lock_app_dual_stack_freertos.slcw
   - slc/apps/lock_app/wifi/matter_wifi_917_ncp_lock_app_freertos.slcp
   - slc/apps/lock_app/wifi/matter_wifi_917_ncp_lock_app_freertos.slcw
   - slc/apps/lock_app/wifi/matter_wifi_soc_lock_app_freertos.slcp
@@ -544,6 +562,9 @@ extra_files:
   - slc/apps/thermostat/wifi/matter_wifi_soc_thermostat_freertos.slcp
   - slc/apps/thermostat/wifi/matter_wifi_soc_thermostat_freertos.slcw
   - slc/apps/thermostat/wifi/pkg.slt
+  - slc/apps/wake_on_matter/thread/README.md
+  - slc/apps/wake_on_matter/thread/matter_thread_soc_wake_on_matter_freertos.slcp
+  - slc/apps/wake_on_matter/thread/matter_thread_soc_wake_on_matter_series_2_freertos.slcw
   - slc/apps/window_app/thread/README.md
   - slc/apps/window_app/thread/matter_thread_soc_window_app_freertos.slcp
   - slc/apps/window_app/thread/matter_thread_soc_window_app_series_2_freertos.slcw
@@ -570,9 +591,11 @@ extra_files:
   - slc/component/matter-clusters/matter_actions.slcc
   - slc/component/matter-clusters/matter_administrator_commissioning.slcc
   - slc/component/matter-clusters/matter_air_quality.slcc
+  - slc/component/matter-clusters/matter_ambient_context_sensing.slcc
   - slc/component/matter-clusters/matter_application_basic.slcc
   - slc/component/matter-clusters/matter_application_launcher.slcc
   - slc/component/matter-clusters/matter_audio_output.slcc
+  - slc/component/matter-clusters/matter_av_analysis.slcc
   - slc/component/matter-clusters/matter_basic_information.slcc
   - slc/component/matter-clusters/matter_bindings.slcc
   - slc/component/matter-clusters/matter_boolean_state.slcc
@@ -598,6 +621,7 @@ extra_files:
   - slc/component/matter-clusters/matter_diagnostic_logs.slcc
   - slc/component/matter-clusters/matter_dishwasher_alarm.slcc
   - slc/component/matter-clusters/matter_door_lock.slcc
+  - slc/component/matter-clusters/matter_dynamic_lighting.slcc
   - slc/component/matter-clusters/matter_ecosystem_information.slcc
   - slc/component/matter-clusters/matter_electrical_energy_measurement.slcc
   - slc/component/matter-clusters/matter_electrical_grid_conditions.slcc
@@ -614,6 +638,7 @@ extra_files:
   - slc/component/matter-clusters/matter_group_key_mgmt.slcc
   - slc/component/matter-clusters/matter_groupcast.slcc
   - slc/component/matter-clusters/matter_groups.slcc
+  - slc/component/matter-clusters/matter_humidistat.slcc
   - slc/component/matter-clusters/matter_icd_management.slcc
   - slc/component/matter-clusters/matter_identify.slcc
   - slc/component/matter-clusters/matter_illuminance_measurement.slcc
@@ -625,6 +650,7 @@ extra_files:
   - slc/component/matter-clusters/matter_level_control.slcc
   - slc/component/matter-clusters/matter_localization_configuration.slcc
   - slc/component/matter-clusters/matter_low_power.slcc
+  - slc/component/matter-clusters/matter_media_file_management.slcc
   - slc/component/matter-clusters/matter_media_input.slcc
   - slc/component/matter-clusters/matter_media_playback.slcc
   - slc/component/matter-clusters/matter_messages.slcc
@@ -644,6 +670,7 @@ extra_files:
   - slc/component/matter-clusters/matter_power_source_configuration.slcc
   - slc/component/matter-clusters/matter_power_topology.slcc
   - slc/component/matter-clusters/matter_pressure_measurement.slcc
+  - slc/component/matter-clusters/matter_proximity_ranging.slcc
   - slc/component/matter-clusters/matter_pump_configuration_and_control.slcc
   - slc/component/matter-clusters/matter_push_av_stream_transport.slcc
   - slc/component/matter-clusters/matter_refrigerator_alarm.slcc
@@ -651,6 +678,7 @@ extra_files:
   - slc/component/matter-clusters/matter_resource_monitoring.slcc
   - slc/component/matter-clusters/matter_sample_mei.slcc
   - slc/component/matter-clusters/matter_scenes.slcc
+  - slc/component/matter-clusters/matter_scenes_support.slcc
   - slc/component/matter-clusters/matter_service_area.slcc
   - slc/component/matter-clusters/matter_smoke_co_alarm.slcc
   - slc/component/matter-clusters/matter_software_diagnostics.slcc
@@ -660,7 +688,6 @@ extra_files:
   - slc/component/matter-clusters/matter_temperature_control.slcc
   - slc/component/matter-clusters/matter_temperature_measurement.slcc
   - slc/component/matter-clusters/matter_test_cluster.slcc
-  - slc/component/matter-clusters/matter_testing.slcc
   - slc/component/matter-clusters/matter_thermostat.slcc
   - slc/component/matter-clusters/matter_thermostat_user_interface_configuration.slcc
   - slc/component/matter-clusters/matter_thread_border_router_management.slcc
@@ -755,6 +782,7 @@ extra_files:
   - slc/component/matter-core-sdk/matter_check_in_sender.slcc
   - slc/component/matter-core-sdk/matter_cluster_building_blocks.slcc
   - slc/component/matter-core-sdk/matter_code_driven_dm.slcc
+  - slc/component/matter-core-sdk/matter_use_ctm.slcc
   - slc/component/matter-core-sdk/matter_zap_driven_dm.slcc
   - slc/component/matter-core-sdk/memory.slcc
   - slc/component/matter-core-sdk/messagedef.slcc
@@ -763,6 +791,8 @@ extra_files:
   - slc/component/matter-core-sdk/nodatamodel.slcc
   - slc/component/matter-core-sdk/notifier.slcc
   - slc/component/matter-core-sdk/power_save_interface.slcc
+  - slc/component/matter-core-sdk/read_client.slcc
+  - slc/component/matter-core-sdk/reader.slcc
   - slc/component/matter-core-sdk/records.slcc
   - slc/component/matter-core-sdk/responders.slcc
   - slc/component/matter-core-sdk/server_cluster.slcc
@@ -825,6 +855,7 @@ extra_files:
   - slc/component/matter-platform/logging/matter_log_rtt.slcc
   - slc/component/matter-platform/logging/matter_log_uart.slcc
   - slc/component/matter-platform/logging/stack_monitoring.slcc
+  - slc/component/matter-platform/low-power/matter_em4.slcc
   - slc/component/matter-platform/low-power/matter_icd_checkin_sender.slcc
   - slc/component/matter-platform/low-power/matter_icd_core.slcc
   - slc/component/matter-platform/low-power/matter_platform_low_power.slcc
@@ -839,7 +870,6 @@ extra_files:
   - slc/component/matter-platform/peripherals/matter_peripherals.slcc
   - slc/component/matter-platform/peripherals/matter_peripherals_917SOC.slcc
   - slc/component/matter-platform/segger/matter_configuration_over_swo.slcc
-  - slc/component/matter-platform/segger/matter_segger_rtt.slcc
   - slc/component/matter-platform/sensors/matter_si70xx_sensor.slcc
   - slc/component/matter-platform/shell/matter_shell.slcc
   - slc/component/matter-platform/siwx917/matter_crypto_psa_siwx917.slcc
@@ -853,6 +883,7 @@ extra_files:
   - slc/component/matter-platform/utils/matter_performance_testing.slcc
   - slc/component/matter-platform/utils/matter_syscall_stubs.slcc
   - slc/component/matter-platform/utils/matter_test_event_trigger.slcc
+  - slc/component/matter-platform/utils/matter_tests.slcc
   - slc/component/matter-platform/wstk-leds/matter_leds.slcc
   - slc/component/matter-platform/wstk-leds/matter_rgb_leds.slcc
   - slc/component/matter-thread/matter_multipan.slcc
@@ -863,10 +894,14 @@ extra_files:
   - slc/component/matter-thread/matter_thread_cli.slcc
   - slc/component/matter-wifi/917-ncp/siwx917_ncp.slcc
   - slc/component/matter-wifi/917-ncp/siwx917_ncp_brd4357a.slcc
+  - slc/component/matter-wifi/917-ncp/siwx917_ncp_brd4357c.slcc
   - slc/component/matter-wifi/917-soc/linkerfile_common.ld.jinja
   - slc/component/matter-wifi/917-soc/toolchain_gcc_common.slcc
   - slc/component/matter-wifi/matter_aws.slcc
   - slc/component/matter-wifi/matter_aws_ota.slcc
+  - slc/component/matter-wifi/matter_aws_transport_lwip.slcc
+  - slc/component/matter-wifi/matter_aws_transport_nwp.slcc
+  - slc/component/matter-wifi/matter_dual_stack.slcc
   - slc/component/matter-wifi/matter_efr32_ncp.slcc
   - slc/component/matter-wifi/matter_lwip.slcc
   - slc/component/matter-wifi/matter_lwip_modified.slcc
@@ -875,13 +910,9 @@ extra_files:
   - slc/component/matter-wifi/matter_sleep_manager.slcc
   - slc/component/matter-wifi/matter_wifi.slcc
   - slc/component/matter-wifi/mbedtls_entropy_default_aws.slcc
-  - slc/component/matter-wifi/mbedtls_pki_aws.slcc
+  - slc/component/matter-wifi/mbedtls_x509_create_aws.slcc
+  - slc/component/matter-wifi/mbedtls_x509_use_aws.slcc
   - slc/component/matter.slcc
-  - slc/component/sdk-content/simplicity-sdk/util/third_party/segger/systemview/Config/SEGGER_RTT_Conf.h
-  - slc/component/sdk-content/simplicity-sdk/util/third_party/segger/systemview/SEGGER/SEGGER.h
-  - slc/component/sdk-content/simplicity-sdk/util/third_party/segger/systemview/SEGGER/SEGGER_RTT.c
-  - slc/component/sdk-content/simplicity-sdk/util/third_party/segger/systemview/SEGGER/SEGGER_RTT.h
-  - slc/component/sdk-content/simplicity-sdk/util/third_party/segger/systemview/SEGGER/sl_rtt_buffer_index.h
   - slc/config/app/icd/server/ICDServerBuildConfig.h
   - slc/config/scripts/upgrade_components_to_2.6.0.lua
   - slc/config/scripts/upgrade_config_to_2.5.1.lua
@@ -897,6 +928,7 @@ extra_files:
   - slc/script/build_ot_rcp.py
   - slc/script/code_size_diff_check.py
   - slc/script/code_size_result.sh
+  - slc/script/demos.xml.j2
   - slc/script/dependency_versions.yaml
   - slc/script/em1-augmentation.py
   - slc/script/enable_copy_contents.py
@@ -905,18 +937,23 @@ extra_files:
   - slc/script/gen_cluster_components.py
   - slc/script/gen_components.py
   - slc/script/gen_static_zap_includes.py
-  - slc/script/generate_metadata.py
+  - slc/script/generate_metadata_hwfilter.py
   - slc/script/generate_pkg_slt.py
   - slc/script/get_slce_extra_paths.py
   - slc/script/get_zap_version.py
   - slc/script/gsdk_matter.patch
+  - slc/script/hwfilter-config.yml
   - slc/script/list_header_files.py
   - slc/script/matter_package_version
+  - slc/script/metadata-generation.yml
   - slc/script/remove_obsolete_cluster_components.py
   - slc/script/run_sdk_update_scripts.py
   - slc/script/tag_release_version.py
+  - slc/script/templates.xml.j2
   - slc/script/update_version.py
+  - slc/script/validate_app_standardization.py
   - slc/script/validate_components.py
+  - slc/script/validate_demo_images.py
   - slc/script/validate_matter_templates.py
   - slc/script/verify_package_matter.py
   - slc/script/verify_vendor_silabs.py
@@ -927,6 +964,7 @@ extra_files:
   - slc/sl_setup_env.py
   - slc/stage_extension.py
   - sled-library.json
+  - sonar-project.properties
   - src/app/zap-templates/app-templates.json
   - src/app/zap-templates/cluster-to-component-dependencies.json
   - src/app/zap-templates/common/override.js
@@ -939,11 +977,12 @@ extra_files:
   - src/app/zap-templates/templates/app/slc_compatibility/event-ids.zapt
   - src/app/zap-templates/templates/app/slc_compatibility/ids.zapt
   - src/app/zap-templates/templates/app/slc_compatibility/metadata.zapt
-  - src/app/zap-templates/templates/app/slc_compatibility/static-cluster-config-Descriptor.zapt
+  - src/app/zap-templates/templates/app/slc_compatibility/static-cluster-config.h.zapt
   - src/app/zap-templates/zcl/zcl.json
   - tools/console/README.md
   - tools/console/console_log_parser.py
   - tools/console/console_ui.py
+  - tools/console/icon/console_logo.png
   - tools/console/requirements.txt
   - tools/console/silabs_console.py
   - tools/iot_reports.py
@@ -969,7 +1008,6 @@ extra_files:
   - third_party/matter_sdk/src/app/AttributeAccessInterfaceCache.h
   - third_party/matter_sdk/src/app/AttributeAccessInterfaceRegistry.cpp
   - third_party/matter_sdk/src/app/AttributeAccessInterfaceRegistry.h
-  - third_party/matter_sdk/src/app/AttributeAccessToken.h
   - third_party/matter_sdk/src/app/AttributeEncodeState.h
   - third_party/matter_sdk/src/app/AttributePathExpandIterator.cpp
   - third_party/matter_sdk/src/app/AttributePathExpandIterator.h
@@ -1180,6 +1218,8 @@ extra_files:
   - third_party/matter_sdk/src/app/cluster-building-blocks/tests/BUILD.gn
   - third_party/matter_sdk/src/app/cluster-building-blocks/tests/TestQuieterReporting.cpp
   - third_party/matter_sdk/src/app/clusters/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/access-control-server/AccessControlEventHelper.cpp
+  - third_party/matter_sdk/src/app/clusters/access-control-server/AccessControlEventHelper.h
   - third_party/matter_sdk/src/app/clusters/access-control-server/ArlEncoder.cpp
   - third_party/matter_sdk/src/app/clusters/access-control-server/ArlEncoder.h
   - third_party/matter_sdk/src/app/clusters/access-control-server/BUILD.gn
@@ -1196,6 +1236,8 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/account-login-server/account-login-server.h
   - third_party/matter_sdk/src/app/clusters/account-login-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/account-login-server/app_config_dependent_sources.gni
+  - third_party/matter_sdk/src/app/clusters/account-login-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/account-login-server/tests/TestAccountLoginCluster.cpp
   - third_party/matter_sdk/src/app/clusters/actions-server/ActionsCluster.cpp
   - third_party/matter_sdk/src/app/clusters/actions-server/ActionsCluster.h
   - third_party/matter_sdk/src/app/clusters/actions-server/ActionsDelegate.h
@@ -1231,6 +1273,17 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/air-quality-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/air-quality-server/tests/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/air-quality-server/tests/TestAirQualityCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/AmbientContextSensingCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/AmbientContextSensingCluster.h
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/AmbientContextSensingDelegate.h
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/ambient-context-sensing-namespace.h
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/app_config_dependent_sources.cmake
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/app_config_dependent_sources.gni
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/ambient-context-sensing-server/tests/TestAmbientContextSensingCluster.cpp
   - third_party/matter_sdk/src/app/clusters/application-basic-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/application-basic-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/application-basic-server/app_config_dependent_sources.gni
@@ -1249,6 +1302,18 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/audio-output-server/audio-output-delegate.h
   - third_party/matter_sdk/src/app/clusters/audio-output-server/audio-output-server.cpp
   - third_party/matter_sdk/src/app/clusters/audio-output-server/audio-output-server.h
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/AvAnalysisCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/AvAnalysisCluster.h
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/AvAnalysisLogic.cpp
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/AvAnalysisLogic.h
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/AvAnalysisStorage.h
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/app_config_dependent_sources.cmake
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/app_config_dependent_sources.gni
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/tests/TestLocalAvAnalysisCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/av-analysis-server/tests/TestRemoteAvAnalysisCluster.cpp
   - third_party/matter_sdk/src/app/clusters/basic-information/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/basic-information/BasicInformationCluster.h
   - third_party/matter_sdk/src/app/clusters/basic-information/BasicInformationOptionalAttributes.h
@@ -1329,6 +1394,10 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/camera-av-stream-management-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/camera-av-stream-management-server/CameraAVStreamManagementCluster.cpp
   - third_party/matter_sdk/src/app/clusters/camera-av-stream-management-server/CameraAVStreamManagementCluster.h
+  - third_party/matter_sdk/src/app/clusters/camera-av-stream-management-server/MigrationCameraAVStreamManagementCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/camera-av-stream-management-server/MigrationCameraAVStreamManagementCluster.h
+  - third_party/matter_sdk/src/app/clusters/camera-av-stream-management-server/MigratorCameraAVStreamManagementStorage.cpp
+  - third_party/matter_sdk/src/app/clusters/camera-av-stream-management-server/MigratorCameraAVStreamManagementStorage.h
   - third_party/matter_sdk/src/app/clusters/camera-av-stream-management-server/README.md
   - third_party/matter_sdk/src/app/clusters/camera-av-stream-management-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/camera-av-stream-management-server/app_config_dependent_sources.gni
@@ -1386,7 +1455,8 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/color-control-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/color-control-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/color-control-server/app_config_dependent_sources.gni
-  - third_party/matter_sdk/src/app/clusters/color-control-server/color-control-server.cpp
+  - third_party/matter_sdk/src/app/clusters/color-control-server/codegen/color-control-server.cpp
+  - third_party/matter_sdk/src/app/clusters/color-control-server/codegen/color-control-server.h
   - third_party/matter_sdk/src/app/clusters/color-control-server/color-control-server.h
   - third_party/matter_sdk/src/app/clusters/commissioner-control-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/commissioner-control-server/CodegenIntegration.cpp
@@ -1415,6 +1485,7 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/CommodityTariffAttrsDataMgmt.cpp
   - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/CommodityTariffAttrsDataMgmt.h
   - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/CommodityTariffConsts.h
+  - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/CommodityTariffContainers.h
   - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/CommodityTariffTestEventTriggerHandler.h
   - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/app_config_dependent_sources.gni
@@ -1422,11 +1493,19 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/commodity-tariff-server.h
   - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/tests/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/tests/TestCommodityTariffBaseDataClass.cpp
+  - third_party/matter_sdk/src/app/clusters/commodity-tariff-server/tests/TestCommodityTariffContainers.cpp
   - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/ConcentrationMeasurementCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/ConcentrationMeasurementCluster.h
+  - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/README.md
   - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/concentration-measurement-cluster-objects.h
   - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/concentration-measurement-server.h
+  - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/tests/TestConcentrationMeasurementCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/concentration-measurement-server/tests/TestConcentrationMeasurementClusterBackwardsCompat.cpp
   - third_party/matter_sdk/src/app/clusters/content-app-observer/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/content-app-observer/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/content-app-observer/app_config_dependent_sources.gni
@@ -1445,6 +1524,8 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/content-launch-server/content-launch-delegate.h
   - third_party/matter_sdk/src/app/clusters/content-launch-server/content-launch-server.cpp
   - third_party/matter_sdk/src/app/clusters/content-launch-server/content-launch-server.h
+  - third_party/matter_sdk/src/app/clusters/content-launch-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/content-launch-server/tests/TestContentLaunchServer.cpp
   - third_party/matter_sdk/src/app/clusters/descriptor/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/descriptor/CodegenIntegration.cpp
   - third_party/matter_sdk/src/app/clusters/descriptor/DescriptorCluster.cpp
@@ -1496,6 +1577,15 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/door-lock-server/door-lock-server-callback.cpp
   - third_party/matter_sdk/src/app/clusters/door-lock-server/door-lock-server.cpp
   - third_party/matter_sdk/src/app/clusters/door-lock-server/door-lock-server.h
+  - third_party/matter_sdk/src/app/clusters/dynamic-lighting-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/dynamic-lighting-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/dynamic-lighting-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/dynamic-lighting-server/DynamicLightingCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/dynamic-lighting-server/DynamicLightingCluster.h
+  - third_party/matter_sdk/src/app/clusters/dynamic-lighting-server/app_config_dependent_sources.cmake
+  - third_party/matter_sdk/src/app/clusters/dynamic-lighting-server/app_config_dependent_sources.gni
+  - third_party/matter_sdk/src/app/clusters/dynamic-lighting-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/dynamic-lighting-server/tests/TestDynamicLightingCluster.cpp
   - third_party/matter_sdk/src/app/clusters/ecosystem-information-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/ecosystem-information-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/ecosystem-information-server/app_config_dependent_sources.gni
@@ -1506,6 +1596,7 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/electrical-energy-measurement-server/CodegenIntegration.h
   - third_party/matter_sdk/src/app/clusters/electrical-energy-measurement-server/ElectricalEnergyMeasurementCluster.cpp
   - third_party/matter_sdk/src/app/clusters/electrical-energy-measurement-server/ElectricalEnergyMeasurementCluster.h
+  - third_party/matter_sdk/src/app/clusters/electrical-energy-measurement-server/ElectricalEnergyMeasurementDelegate.h
   - third_party/matter_sdk/src/app/clusters/electrical-energy-measurement-server/EnergyReportingTestEventTriggerHandler.h
   - third_party/matter_sdk/src/app/clusters/electrical-energy-measurement-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/electrical-energy-measurement-server/app_config_dependent_sources.gni
@@ -1549,10 +1640,16 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/energy-evse-server/tests/TestEnergyEvseCluster.cpp
   - third_party/matter_sdk/src/app/clusters/energy-evse-server/tests/TestEnergyEvseClusterBackwardsCompatibility.cpp
   - third_party/matter_sdk/src/app/clusters/energy-preference-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/energy-preference-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/energy-preference-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/energy-preference-server/EnergyPreferenceCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/energy-preference-server/EnergyPreferenceCluster.h
   - third_party/matter_sdk/src/app/clusters/energy-preference-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/energy-preference-server/app_config_dependent_sources.gni
-  - third_party/matter_sdk/src/app/clusters/energy-preference-server/energy-preference-server.cpp
+  - third_party/matter_sdk/src/app/clusters/energy-preference-server/energy-preference-delegate.h
   - third_party/matter_sdk/src/app/clusters/energy-preference-server/energy-preference-server.h
+  - third_party/matter_sdk/src/app/clusters/energy-preference-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/energy-preference-server/tests/TestEnergyPreferenceCluster.cpp
   - third_party/matter_sdk/src/app/clusters/ethernet-network-diagnostics-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/ethernet-network-diagnostics-server/CodegenIntegration.cpp
   - third_party/matter_sdk/src/app/clusters/ethernet-network-diagnostics-server/EthernetDiagnosticsCluster.cpp
@@ -1562,11 +1659,17 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/ethernet-network-diagnostics-server/tests/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/ethernet-network-diagnostics-server/tests/TestEthernetDiagnosticsCluster.cpp
   - third_party/matter_sdk/src/app/clusters/fan-control-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/fan-control-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/fan-control-server/CodegenIntegration.h
   - third_party/matter_sdk/src/app/clusters/fan-control-server/FanControlCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/fan-control-server/FanControlCluster.h
+  - third_party/matter_sdk/src/app/clusters/fan-control-server/README.md
   - third_party/matter_sdk/src/app/clusters/fan-control-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/fan-control-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/fan-control-server/fan-control-delegate.h
   - third_party/matter_sdk/src/app/clusters/fan-control-server/fan-control-server.h
+  - third_party/matter_sdk/src/app/clusters/fan-control-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/fan-control-server/tests/TestFanControlCluster.cpp
   - third_party/matter_sdk/src/app/clusters/fault-injection-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/fault-injection-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/fault-injection-server/app_config_dependent_sources.gni
@@ -1634,6 +1737,16 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/groups-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/groups-server/tests/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/groups-server/tests/TestGroupsCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/humidistat-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/humidistat-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/humidistat-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/humidistat-server/HumidistatCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/humidistat-server/HumidistatCluster.h
+  - third_party/matter_sdk/src/app/clusters/humidistat-server/HumidistatTestEventTriggerHandler.h
+  - third_party/matter_sdk/src/app/clusters/humidistat-server/app_config_dependent_sources.cmake
+  - third_party/matter_sdk/src/app/clusters/humidistat-server/app_config_dependent_sources.gni
+  - third_party/matter_sdk/src/app/clusters/humidistat-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/humidistat-server/tests/TestHumidistatCluster.cpp
   - third_party/matter_sdk/src/app/clusters/ias-zone-client/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/ias-zone-client/README.md
   - third_party/matter_sdk/src/app/clusters/ias-zone-client/app_config_dependent_sources.cmake
@@ -1698,11 +1811,16 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/laundry-dryer-controls-server/laundry-dryer-controls-server.cpp
   - third_party/matter_sdk/src/app/clusters/laundry-dryer-controls-server/laundry-dryer-controls-server.h
   - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/LaundryWasherControlsCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/LaundryWasherControlsCluster.h
   - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/laundry-washer-controls-delegate.h
-  - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/laundry-washer-controls-server.cpp
   - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/laundry-washer-controls-server.h
+  - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/laundry-washer-controls-server/tests/TestLaundryWasherControlsCluster.cpp
   - third_party/matter_sdk/src/app/clusters/level-control/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/level-control/LevelControlCluster.cpp
   - third_party/matter_sdk/src/app/clusters/level-control/LevelControlCluster.h
@@ -1732,6 +1850,17 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/low-power-server/low-power-delegate.h
   - third_party/matter_sdk/src/app/clusters/low-power-server/low-power-server.cpp
   - third_party/matter_sdk/src/app/clusters/low-power-server/low-power-server.h
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/MediaFileManagementCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/MediaFileManagementCluster.h
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/MediaFileManagementDelegate.h
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/README.md
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/app_config_dependent_sources.cmake
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/app_config_dependent_sources.gni
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/media-file-management-server/tests/TestMediaFileManagementCluster.cpp
   - third_party/matter_sdk/src/app/clusters/media-input-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/media-input-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/media-input-server/app_config_dependent_sources.gni
@@ -1744,12 +1873,16 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/media-playback-server/media-playback-delegate.h
   - third_party/matter_sdk/src/app/clusters/media-playback-server/media-playback-server.cpp
   - third_party/matter_sdk/src/app/clusters/media-playback-server/media-playback-server.h
+  - third_party/matter_sdk/src/app/clusters/media-playback-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/media-playback-server/tests/TestMediaPlaybackServer.cpp
   - third_party/matter_sdk/src/app/clusters/messages-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/messages-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/messages-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/messages-server/messages-delegate.h
   - third_party/matter_sdk/src/app/clusters/messages-server/messages-server.cpp
   - third_party/matter_sdk/src/app/clusters/messages-server/messages-server.h
+  - third_party/matter_sdk/src/app/clusters/messages-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/messages-server/tests/TestMessagesCluster.cpp
   - third_party/matter_sdk/src/app/clusters/meter-identification-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/meter-identification-server/MeterIdentificationTestEventTriggerHandler.h
   - third_party/matter_sdk/src/app/clusters/meter-identification-server/app_config_dependent_sources.cmake
@@ -1769,18 +1902,27 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/microwave-oven-control-server/microwave-oven-control-server.h
   - third_party/matter_sdk/src/app/clusters/microwave-oven-control-server/tests/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/microwave-oven-control-server/tests/TestMicrowaveOvenControlCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/mode-base-server/AppDelegate.h
   - third_party/matter_sdk/src/app/clusters/mode-base-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/mode-base-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/mode-base-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/mode-base-server/Delegate.h
+  - third_party/matter_sdk/src/app/clusters/mode-base-server/MigrateModeBaseServerStorage.cpp
+  - third_party/matter_sdk/src/app/clusters/mode-base-server/MigrateModeBaseServerStorage.h
+  - third_party/matter_sdk/src/app/clusters/mode-base-server/ModeBaseCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/mode-base-server/ModeBaseCluster.h
   - third_party/matter_sdk/src/app/clusters/mode-base-server/README.md
   - third_party/matter_sdk/src/app/clusters/mode-base-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/mode-base-server/app_config_dependent_sources.gni
-  - third_party/matter_sdk/src/app/clusters/mode-base-server/mode-base-cluster-objects.cpp
   - third_party/matter_sdk/src/app/clusters/mode-base-server/mode-base-cluster-objects.h
-  - third_party/matter_sdk/src/app/clusters/mode-base-server/mode-base-server.cpp
   - third_party/matter_sdk/src/app/clusters/mode-base-server/mode-base-server.h
+  - third_party/matter_sdk/src/app/clusters/mode-base-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/mode-base-server/tests/TestModeBaseCluster.cpp
   - third_party/matter_sdk/src/app/clusters/mode-select-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/mode-select-server/ModeSelectCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/mode-select-server/SupportedModesManager.h
   - third_party/matter_sdk/src/app/clusters/mode-select-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/mode-select-server/app_config_dependent_sources.gni
-  - third_party/matter_sdk/src/app/clusters/mode-select-server/mode-select-server.cpp
   - third_party/matter_sdk/src/app/clusters/mode-select-server/supported-modes-manager.h
   - third_party/matter_sdk/src/app/clusters/network-commissioning/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/network-commissioning/CodegenInstance.cpp
@@ -1867,14 +2009,22 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/operational-credentials-server/tests/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/operational-credentials-server/tests/TestOperationalCredentials.cpp
   - third_party/matter_sdk/src/app/clusters/operational-state-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/operational-state-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/operational-state-server/CodegenIntegration.h
   - third_party/matter_sdk/src/app/clusters/operational-state-server/OperationalStateCluster.cpp
   - third_party/matter_sdk/src/app/clusters/operational-state-server/OperationalStateCluster.h
   - third_party/matter_sdk/src/app/clusters/operational-state-server/OperationalStateDelegate.h
+  - third_party/matter_sdk/src/app/clusters/operational-state-server/OvenCavityOperationalStateCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/operational-state-server/OvenCavityOperationalStateCluster.h
   - third_party/matter_sdk/src/app/clusters/operational-state-server/README.md
+  - third_party/matter_sdk/src/app/clusters/operational-state-server/RvcOperationalStateCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/operational-state-server/RvcOperationalStateCluster.h
   - third_party/matter_sdk/src/app/clusters/operational-state-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/operational-state-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/operational-state-server/operational-state-cluster-objects.h
   - third_party/matter_sdk/src/app/clusters/operational-state-server/operational-state-server.h
+  - third_party/matter_sdk/src/app/clusters/operational-state-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/operational-state-server/tests/TestOperationalStateCluster.cpp
   - third_party/matter_sdk/src/app/clusters/ota-provider/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/ota-provider/CodegenIntegration.cpp
   - third_party/matter_sdk/src/app/clusters/ota-provider/CodegenIntegration.h
@@ -1925,11 +2075,21 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/power-source-configuration-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/power-source-configuration-server/power-source-configuration-server.cpp
   - third_party/matter_sdk/src/app/clusters/power-source-server/BUILD.gn
-  - third_party/matter_sdk/src/app/clusters/power-source-server/CodegenIntegration.cpp
-  - third_party/matter_sdk/src/app/clusters/power-source-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/power-source-server/Modules.h
+  - third_party/matter_sdk/src/app/clusters/power-source-server/NamedPowerSourceClusters.h
+  - third_party/matter_sdk/src/app/clusters/power-source-server/PowerSourceCluster.h
+  - third_party/matter_sdk/src/app/clusters/power-source-server/README.md
   - third_party/matter_sdk/src/app/clusters/power-source-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/power-source-server/app_config_dependent_sources.gni
+  - third_party/matter_sdk/src/app/clusters/power-source-server/codegen/power-source-server.cpp
+  - third_party/matter_sdk/src/app/clusters/power-source-server/codegen/power-source-server.h
   - third_party/matter_sdk/src/app/clusters/power-source-server/power-source-server.h
+  - third_party/matter_sdk/src/app/clusters/power-source-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/power-source-server/tests/PowerSourceClusterTestCommon.h
+  - third_party/matter_sdk/src/app/clusters/power-source-server/tests/TestFullBatteryPowerSourceCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/power-source-server/tests/TestFullWiredPowerSourceCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/power-source-server/tests/TestMinimalBatteryPowerSourceCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/power-source-server/tests/TestMinimalWiredPowerSourceCluster.cpp
   - third_party/matter_sdk/src/app/clusters/power-topology-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/power-topology-server/CodegenIntegration.cpp
   - third_party/matter_sdk/src/app/clusters/power-topology-server/CodegenIntegration.h
@@ -1953,6 +2113,23 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/pressure-measurement-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/pressure-measurement-server/tests/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/pressure-measurement-server/tests/TestPressureMeasurementCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/BleRssiRangingHelpers.cpp
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/BleRssiRangingHelpers.h
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/ProximityRangingCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/ProximityRangingCluster.h
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/ProximityRangingDriver.cpp
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/ProximityRangingDriver.h
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/README.md
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/RangingAdapter.h
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/app_config_dependent_sources.cmake
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/app_config_dependent_sources.gni
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/tests/TestBleRssiRangingHelpers.cpp
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/tests/TestProximityRangingCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/proximity-ranging-server/tests/TestProximityRangingDriver.cpp
   - third_party/matter_sdk/src/app/clusters/pump-configuration-and-control-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/pump-configuration-and-control-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/pump-configuration-and-control-server/app_config_dependent_sources.gni
@@ -2037,21 +2214,32 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/scenes-server/tests/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/scenes-server/tests/TestScenesManagementCluster.cpp
   - third_party/matter_sdk/src/app/clusters/service-area-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/service-area-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/service-area-server/CodegenIntegration.h
   - third_party/matter_sdk/src/app/clusters/service-area-server/README.md
+  - third_party/matter_sdk/src/app/clusters/service-area-server/ServiceAreaCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/service-area-server/ServiceAreaCluster.h
   - third_party/matter_sdk/src/app/clusters/service-area-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/service-area-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/service-area-server/service-area-cluster-objects.h
   - third_party/matter_sdk/src/app/clusters/service-area-server/service-area-delegate.h
-  - third_party/matter_sdk/src/app/clusters/service-area-server/service-area-server.cpp
   - third_party/matter_sdk/src/app/clusters/service-area-server/service-area-server.h
   - third_party/matter_sdk/src/app/clusters/service-area-server/service-area-storage-delegate.cpp
   - third_party/matter_sdk/src/app/clusters/service-area-server/service-area-storage-delegate.h
+  - third_party/matter_sdk/src/app/clusters/service-area-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/service-area-server/tests/TestServiceAreaCluster.cpp
   - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/CodegenIntegration.h
   - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/SmokeCOTestEventTriggerHandler.h
+  - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/SmokeCoAlarmCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/SmokeCoAlarmCluster.h
   - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/app_config_dependent_sources.gni
-  - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/smoke-co-alarm-server.cpp
   - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/smoke-co-alarm-server.h
+  - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/tests/TestSmokeCoAlarmCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/smoke-co-alarm-server/tests/TestSmokeCoAlarmClusterBackwardsCompat.cpp
   - third_party/matter_sdk/src/app/clusters/software-diagnostics-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/software-diagnostics-server/CodegenIntegration.cpp
   - third_party/matter_sdk/src/app/clusters/software-diagnostics-server/SoftwareDiagnosticsCluster.cpp
@@ -2115,36 +2303,52 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/thermostat-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/thermostat-server/PresetStructWithOwnedMembers.cpp
   - third_party/matter_sdk/src/app/clusters/thermostat-server/PresetStructWithOwnedMembers.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/Setpoint.cpp
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/Setpoint.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/SetpointAttributes.cpp
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/SetpointAttributes.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/SetpointLimits.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/SetpointRange.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/Setpoints.cpp
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/Setpoints.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/Temperature.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatCluster.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatClusterAtomic.cpp
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatClusterEvents.cpp
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatClusterEvents.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatClusterPresets.cpp
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatClusterPresets.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatClusterSetpoints.cpp
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatClusterSetpoints.h
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatClusterSuggestions.cpp
+  - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatDelegate.h
   - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatSuggestionStructWithOwnedMembers.cpp
   - third_party/matter_sdk/src/app/clusters/thermostat-server/ThermostatSuggestionStructWithOwnedMembers.h
   - third_party/matter_sdk/src/app/clusters/thermostat-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/thermostat-server/app_config_dependent_sources.gni
-  - third_party/matter_sdk/src/app/clusters/thermostat-server/thermostat-delegate.h
-  - third_party/matter_sdk/src/app/clusters/thermostat-server/thermostat-server-atomic.cpp
-  - third_party/matter_sdk/src/app/clusters/thermostat-server/thermostat-server-events.cpp
-  - third_party/matter_sdk/src/app/clusters/thermostat-server/thermostat-server-events.h
-  - third_party/matter_sdk/src/app/clusters/thermostat-server/thermostat-server-presets.cpp
-  - third_party/matter_sdk/src/app/clusters/thermostat-server/thermostat-server-presets.h
-  - third_party/matter_sdk/src/app/clusters/thermostat-server/thermostat-server-suggestions.cpp
-  - third_party/matter_sdk/src/app/clusters/thermostat-server/thermostat-server.cpp
-  - third_party/matter_sdk/src/app/clusters/thermostat-server/thermostat-server.h
   - third_party/matter_sdk/src/app/clusters/thermostat-user-interface-configuration-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/thermostat-user-interface-configuration-server/ThermostatUserInterfaceConfigurationServer.cpp
   - third_party/matter_sdk/src/app/clusters/thermostat-user-interface-configuration-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/thermostat-user-interface-configuration-server/app_config_dependent_sources.gni
-  - third_party/matter_sdk/src/app/clusters/thermostat-user-interface-configuration-server/thermostat-user-interface-configuration-server.cpp
   - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/CodegenIntegration.h
   - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/ThreadBorderRouterManagementCluster.cpp
   - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/ThreadBorderRouterManagementCluster.h
   - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/ThreadBorderRouterManagementDelegate.h
   - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/app_config_dependent_sources.gni
+  - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/tests/TestThreadBorderRouterManagementCluster.cpp
   - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/thread-border-router-management-server.h
   - third_party/matter_sdk/src/app/clusters/thread-border-router-management-server/thread-br-delegate.h
   - third_party/matter_sdk/src/app/clusters/thread-network-diagnostics-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/thread-network-diagnostics-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/thread-network-diagnostics-server/DirectThreadNetworkDiagnosticsProvider.cpp
+  - third_party/matter_sdk/src/app/clusters/thread-network-diagnostics-server/DirectThreadNetworkDiagnosticsProvider.h
   - third_party/matter_sdk/src/app/clusters/thread-network-diagnostics-server/ThreadNetworkDiagnosticsCluster.cpp
   - third_party/matter_sdk/src/app/clusters/thread-network-diagnostics-server/ThreadNetworkDiagnosticsCluster.h
-  - third_party/matter_sdk/src/app/clusters/thread-network-diagnostics-server/ThreadNetworkDiagnosticsProvider.cpp
   - third_party/matter_sdk/src/app/clusters/thread-network-diagnostics-server/ThreadNetworkDiagnosticsProvider.h
   - third_party/matter_sdk/src/app/clusters/thread-network-diagnostics-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/thread-network-diagnostics-server/app_config_dependent_sources.gni
@@ -2200,6 +2404,7 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/tls-certificate-management-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/tls-certificate-management-server/app_config_dependent_sources.gni
   - third_party/matter_sdk/src/app/clusters/tls-certificate-management-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/tls-certificate-management-server/tests/FuzzTLSCertificateManagementPW.cpp
   - third_party/matter_sdk/src/app/clusters/tls-certificate-management-server/tests/TestTLSCertificateManagementCluster.cpp
   - third_party/matter_sdk/src/app/clusters/tls-client-management-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/tls-client-management-server/CodegenIntegration.cpp
@@ -2249,10 +2454,17 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/wake-on-lan-server/wake-on-lan-server.cpp
   - third_party/matter_sdk/src/app/clusters/wake-on-lan-server/wake-on-lan-server.h
   - third_party/matter_sdk/src/app/clusters/water-heater-management-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/water-heater-management-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/water-heater-management-server/CodegenIntegration.h
+  - third_party/matter_sdk/src/app/clusters/water-heater-management-server/Delegate.cpp
+  - third_party/matter_sdk/src/app/clusters/water-heater-management-server/Delegate.h
+  - third_party/matter_sdk/src/app/clusters/water-heater-management-server/WaterHeaterManagementCluster.cpp
+  - third_party/matter_sdk/src/app/clusters/water-heater-management-server/WaterHeaterManagementCluster.h
   - third_party/matter_sdk/src/app/clusters/water-heater-management-server/WaterHeaterManagementTestEventTriggerHandler.h
   - third_party/matter_sdk/src/app/clusters/water-heater-management-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/water-heater-management-server/app_config_dependent_sources.gni
-  - third_party/matter_sdk/src/app/clusters/water-heater-management-server/water-heater-management-server.cpp
+  - third_party/matter_sdk/src/app/clusters/water-heater-management-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/water-heater-management-server/tests/TestWaterHeaterManagementCluster.cpp
   - third_party/matter_sdk/src/app/clusters/water-heater-management-server/water-heater-management-server.h
   - third_party/matter_sdk/src/app/clusters/webrtc-transport-provider-server/BUILD.gn
   - third_party/matter_sdk/src/app/clusters/webrtc-transport-provider-server/CodegenIntegration.cpp
@@ -2289,11 +2501,15 @@ extra_files:
   - third_party/matter_sdk/src/app/clusters/wifi-network-management-server/tests/TestWiFiNetworkManagementCluster.cpp
   - third_party/matter_sdk/src/app/clusters/wifi-network-management-server/wifi-network-management-server.h
   - third_party/matter_sdk/src/app/clusters/window-covering-server/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/window-covering-server/CodegenIntegration.cpp
+  - third_party/matter_sdk/src/app/clusters/window-covering-server/CodegenIntegration.h
   - third_party/matter_sdk/src/app/clusters/window-covering-server/WindowCoveringCluster.cpp
   - third_party/matter_sdk/src/app/clusters/window-covering-server/WindowCoveringCluster.h
   - third_party/matter_sdk/src/app/clusters/window-covering-server/WindowCoveringDelegate.h
   - third_party/matter_sdk/src/app/clusters/window-covering-server/app_config_dependent_sources.cmake
   - third_party/matter_sdk/src/app/clusters/window-covering-server/app_config_dependent_sources.gni
+  - third_party/matter_sdk/src/app/clusters/window-covering-server/tests/BUILD.gn
+  - third_party/matter_sdk/src/app/clusters/window-covering-server/tests/TestWindowCoveringCluster.cpp
   - third_party/matter_sdk/src/app/clusters/window-covering-server/window-covering-delegate.h
   - third_party/matter_sdk/src/app/clusters/window-covering-server/window-covering-server.h
   - third_party/matter_sdk/src/app/clusters/zone-management-server/BUILD.gn
@@ -2513,7 +2729,6 @@ extra_files:
   - third_party/matter_sdk/src/app/server-cluster/testing/TestAttributeChangeListener.h
   - third_party/matter_sdk/src/app/server-cluster/testing/TestEventGenerator.h
   - third_party/matter_sdk/src/app/server-cluster/testing/TestServerClusterContext.h
-  - third_party/matter_sdk/src/app/server-cluster/testing/ValidateGlobalAttributes.cpp
   - third_party/matter_sdk/src/app/server-cluster/testing/ValidateGlobalAttributes.h
   - third_party/matter_sdk/src/app/server-cluster/tests/BUILD.gn
   - third_party/matter_sdk/src/app/server-cluster/tests/TestAttributeListBuilder.cpp
@@ -2574,11 +2789,11 @@ extra_files:
   - third_party/matter_sdk/src/app/tests/TestReportingEngine.cpp
   - third_party/matter_sdk/src/app/tests/TestSceneTable.cpp
   - third_party/matter_sdk/src/app/tests/TestServer.cpp
+  - third_party/matter_sdk/src/app/tests/TestSessionRelease.cpp
   - third_party/matter_sdk/src/app/tests/TestSimpleSubscriptionResumptionStorage.cpp
   - third_party/matter_sdk/src/app/tests/TestStatusIB.cpp
   - third_party/matter_sdk/src/app/tests/TestStatusResponseMessage.cpp
   - third_party/matter_sdk/src/app/tests/TestTestEventTriggerDelegate.cpp
-  - third_party/matter_sdk/src/app/tests/TestThreadBorderRouterManagementCluster.cpp
   - third_party/matter_sdk/src/app/tests/TestTimeSyncDataProvider.cpp
   - third_party/matter_sdk/src/app/tests/TestTimedHandler.cpp
   - third_party/matter_sdk/src/app/tests/TestWriteInteraction.cpp
@@ -2673,6 +2888,7 @@ extra_files:
   - third_party/matter_sdk/src/app/tests/suites/TestUserLabelCluster.yaml
   - third_party/matter_sdk/src/app/tests/suites/TestUserLabelClusterConstraints.yaml
   - third_party/matter_sdk/src/app/tests/suites/Test_AddNewFabricFromExistingFabric.yaml
+  - third_party/matter_sdk/src/app/tests/suites/Test_WaitForAttributeValue.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/PICS.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_ACE_1_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_ACFREMON_2_1.yaml
@@ -2712,7 +2928,6 @@ extra_files:
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_BIND_2_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_BIND_2_2.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_BIND_2_3.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_BINFO_2_2.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_BOOL_2_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_BRBINFO_2_2.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_BR_1.yaml
@@ -2766,7 +2981,6 @@ extra_files:
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_CHANNEL_5_5.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_CHANNEL_5_6.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_CMOCONC_2_1.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_CNET_4_11.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_CNET_4_12.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_CNET_4_13.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_CNET_4_14.yaml
@@ -2780,7 +2994,6 @@ extra_files:
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_CONTENTLAUNCHER_10_5.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_CONTENTLAUNCHER_10_6.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_CONTENTLAUNCHER_10_7.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_DA_1_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_DA_1_3.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_DA_1_4.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_DA_1_6.yaml
@@ -2872,10 +3085,8 @@ extra_files:
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_IDM_2_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_IDM_3_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_IDM_4_1.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_IDM_4_3.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_IDM_4_4.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_IDM_5_1.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_IDM_5_2.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_IDM_6_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_IDM_6_2.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_IDM_6_3.yaml
@@ -2966,8 +3177,6 @@ extra_files:
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_2_2.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_2_3.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_2_4.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_3_1.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_3_2.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_3_3.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_4_2.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_4_4.yaml
@@ -2977,12 +3186,6 @@ extra_files:
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_4_9.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_5_3.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SC_6_1.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SMOKECO_2_1.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SMOKECO_2_2.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SMOKECO_2_3.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SMOKECO_2_4.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SMOKECO_2_5.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SMOKECO_2_6.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SU_1_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SU_2_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SU_2_2.yaml
@@ -2999,10 +3202,7 @@ extra_files:
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_SWTCH_3_2.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_S_2_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_S_2_2.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_S_2_3.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_S_2_4.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_S_2_5.yaml
-  - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_S_2_6.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_S_3_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_TBRM_2_1.yaml
   - third_party/matter_sdk/src/app/tests/suites/certification/Test_TC_TBRM_2_2.yaml
@@ -3191,9 +3391,12 @@ extra_files:
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/air-quality-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/alchemy_allowlists.yaml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/ambient-context-sensing-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/ambient-sensing-union-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/application-basic-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/application-launcher-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/audio-control-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/audio-output-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/av-analysis-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/ballast-configuration-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/basic-information-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/binding-cluster.xml
@@ -3204,13 +3407,13 @@ extra_files:
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/camera-av-stream-management-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/channel-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/chime-cluster.xml
-  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/chip-ota.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/chip-types.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/closure-control-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/closure-dimension-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/clusters-extensions.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/color-control-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/commissioner-control-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/commissioning-proxy-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/commodity-metering-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/commodity-price-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/commodity-tariff-cluster.xml
@@ -3225,10 +3428,14 @@ extra_files:
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/dishwasher-alarm-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/dishwasher-mode-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/door-lock-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/dynamic-lighting-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/ecosystem-information-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/electrical-alarm-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/electrical-distribution-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/electrical-energy-measurement-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/electrical-grid-conditions-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/electrical-power-measurement-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/electrical-protection-alarm-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/energy-evse-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/energy-evse-mode-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/energy-preference-cluster.xml
@@ -3260,6 +3467,7 @@ extra_files:
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/low-power-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/matter-devices.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/measurement-and-sensing.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/media-file-management-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/media-input-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/media-playback-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/messages-cluster.xml
@@ -3276,6 +3484,8 @@ extra_files:
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/operational-state-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/operational-state-oven-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/operational-state-rvc-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/ota-provider-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/ota-requestor-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/oven-mode-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/power-source-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/power-source-configuration-cluster.xml
@@ -3304,8 +3514,10 @@ extra_files:
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/switch-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/target-navigator-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/temperature-control-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/temperature-controlled-cabinet-topology-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/temperature-measurement-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/test-cluster.xml
+  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/test-hidden-manufacturer-specific-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/thermostat-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/thermostat-user-interface-configuration-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/thread-border-router-management-cluster.xml
@@ -3313,7 +3525,6 @@ extra_files:
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/thread-network-directory-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/time-format-localization-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/time-synchronization-cluster.xml
-  - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/timer-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/tls-certificate-management-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/tls-client-management-cluster.xml
   - third_party/matter_sdk/src/app/zap-templates/zcl/data-model/chip/unit-localization-cluster.xml

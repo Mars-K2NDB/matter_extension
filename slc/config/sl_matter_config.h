@@ -24,10 +24,10 @@
 #endif
 
 // <q SILABS_LOG_ENABLED> Enable Silabs specific log used in matter
-// <i> Default: 1
+// <i> Default: 0
 // <i> Enables Silicon Labs platform-specific logging within the Matter stack
 #ifndef SILABS_LOG_ENABLED
-#define SILABS_LOG_ENABLED 1
+#define SILABS_LOG_ENABLED 0
 #endif
 
 // <q HARD_FAULT_LOG_ENABLE> Enable hard fault logging
@@ -56,14 +56,6 @@
 // <i> Allows interactive debugging and testing via UART/RTT console
 #ifndef SL_MATTER_CLI_ARG_PARSER
 #define SL_MATTER_CLI_ARG_PARSER 1
-#endif
-
-// <q SL_MATTER_DEBUG_WATCHDOG_ENABLE> Enable a Watchdog with debug features for MG devices
-// <i> Default: 0
-// <i> Enables a Watchdog with debug features for only MG devices
-// <i> To enable for SiWG devices, directly add the sl_wdt_manager component to the project
-#ifndef SL_MATTER_DEBUG_WATCHDOG_ENABLE
-#define SL_MATTER_DEBUG_WATCHDOG_ENABLE 0
 #endif
 
 // <o CHIP_DEVICE_CONFIG_MAX_DISCOVERED_IP_ADDRESSES> Define the default number of ip addresses to discover
